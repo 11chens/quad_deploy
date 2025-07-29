@@ -1,0 +1,13 @@
+**/build/
+**/__pycache__/
+**/log/
+**/install/
+*.log
+**/.idea/
+
+.DS_Store
+**/*.egg-info/
+**/__pycache__/
+**/.pytest_cache/
+**/*.pyc
+**/*.pb
