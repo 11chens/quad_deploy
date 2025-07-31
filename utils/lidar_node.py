@@ -7,7 +7,7 @@ from utils.math_utils import CircularBuffer
 class LidarSubscriber:
 
     def __init__(self, rosnode=None):
-        self.rays_hist_ = CircularBuffer(10)
+        self.rays_hist_ = CircularBuffer(5)
         self.ray_sub = rosnode.create_subscription(LaserScan, '/rays', self._perception_callback, 10)
         self.pose_sub = rosnode.create_subscription(Pose2D, '/pose', self._odom_callback, 10)
 

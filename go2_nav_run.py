@@ -23,8 +23,8 @@ class Go2NavRun(UnitreeGo2):
         self.navrun = navrun
         self.agents = {}
         self.curr_agent = None
-        self.EMERGENCY = False
         self.ros_node = None
+        self.EMERGENCY = False
 
         self._supposed_available_agents = None
 
@@ -72,7 +72,7 @@ class Go2NavRun(UnitreeGo2):
         if self.simrun:
             self.logger.debug(f"Start up keyboard node")
             self.joystick = self.ros_node.key_node
-            ros_thread = threading.Thread(target=ros_spin_thread, args=(self.ros_node, ), daemon=True)
+            ros_thread = threading.Thread(target=rclpy.spin, args=(self.ros_node, ), daemon=True)
             ros_thread.start()
         else:
             self.logger.debug(f"Start up joystick node")
@@ -94,39 +94,39 @@ class Go2NavRun(UnitreeGo2):
         Return None for not switching, or the name of the agent to switch to.
         """
         if self.curr_agent is self.agents["stand"] and done:
-            self.logger.info("Current stand agent returns done, waiting for press [X] to switch", once=True)
+            self.logger.log_throttle("Current stand agent returns done, waiting for press [X] to switch", 5)
             if self.joystick.X:
                 return "loco"
             return None
 
-        if self.curr_agent is self.agents["loco"]:
-            if "nav" in self._supposed_available_agents:
+        if "nav" in self._supposed_available_agents:
+            if self.curr_agent is self.agents["loco"]:
                 if self.joystick.R1:
                     return "nav"
                 return None
-            return None
 
-        if "nav" in self._supposed_available_agents:
             if self.curr_agent is self.agents["nav"]:
                 if self.joystick.R2 or done:
                     return "loco"
                 return None
-            return None
-
-        if self.joystick.L1 and self.EMERGENCY == True:
-            self.logger.info("L1 is pressed, robot will recovery.")
-            self.EMERGENCY == False
-            return "stand"
-
-        if self.joystick.L2:
-            self.EMERGENCY = True
-            self.logger.error("L2 is pressed, The motors shuts down.")
-            self.turn_off_motors()
 
         return None
 
+    def emergency_handle(self):
+        if self.joystick.L2:
+            self.EMERGENCY = True
+            self.turn_off_motors()
+            self.logger.error("L2 is pressed, The motors shuts down.")
+
+        if self.joystick.L1 and self.EMERGENCY:
+            self.EMERGENCY = False
+            self.logger.info("L1 is pressed, robot will recovery.")
+            self.curr_agent = self.agents["stand"]
+            self.curr_agent.reset()
+
     def main_loop(self) -> None:
         """Main loop that runs the state machine to control the robot."""
+        self.emergency_handle()
         action, p_gains, d_gains, done = self.curr_agent.step()
         switch_to_agent = self.get_agent_switch(done)
         if switch_to_agent is not None:
@@ -134,15 +134,13 @@ class Go2NavRun(UnitreeGo2):
             self.curr_agent = self.agents[switch_to_agent]
             self.curr_agent.reset()
 
-        self.send_action(action=action, p_gains=p_gains, d_gains=d_gains)
-
-
-def ros_spin_thread(node):
-    rclpy.spin(node)
+        if not self.EMERGENCY:
+            self.send_action(action=action, p_gains=p_gains, d_gains=d_gains)
+        self.joystick.reset()
 
 
 def main(args=None):
-    go2_nav_node = Go2NavRun(simrun=args.simrun, navrun=args.navrun, dry_run=not args.nodryrun)
+    go2_nav_node = Go2NavRun(simrun=not args.nosimrun, navrun=args.navrun, dry_run=not args.nodryrun)
     go2_nav_node._supposed_available_agents = {
         "stand": StandAgent,
         "loco": LocomotionAgent,
@@ -150,7 +148,7 @@ def main(args=None):
     if args.navrun:
         go2_nav_node._supposed_available_agents.update({"nav": NavigationAgent})
 
-    if not args.simrun:
+    if args.nosimrun:
         go2_nav_node.init_client()
         go2_nav_node.init_motors()
 
@@ -163,16 +161,16 @@ def main(args=None):
     dt = 0.005
     global_timestamp = 0
     global_start_time = time.perf_counter()
-    while True:
 
+    while True:
         loop_start_time = time.perf_counter()
         go2_nav_node.main_loop()
         loop_delay = time.perf_counter() - loop_start_time
         time.sleep(max(dt - loop_delay, 0))
         global_timestamp += 1
-        if global_timestamp % 1000 == 0:
+        if global_timestamp % 100 == 0:
             frequency = global_timestamp / (time.perf_counter() - global_start_time)
-            # go2_nav_node.logger.debug(f"frequency: {frequency:.2f} Hz")
+            go2_nav_node.logger.debug(f"frequency: {frequency:.2f} Hz")
 
 
 if __name__ == '__main__':
@@ -180,25 +178,26 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Run the Go2 robot.")
 
     parser.add_argument("--debug", action="store_true", help="Enable debug mode.")
-    parser.add_argument("--nodryrun", action="store_true", help="Disable dry run mode.")
+    parser.add_argument("--nodryrun", action="store_true",
+                        help="Disable dry run mode.")  # default: False, --nodryrun:True
     parser.add_argument("--logdir", type=str, default="example/quad_deploy/models/onnx_models",
                         help="Common directory for user's data (absolute path).")
-    parser.add_argument("--simrun", action="store_true", default=True, help="Disable dry run mode.")
-    parser.add_argument("--navrun", action="store_true", default=False, help="Enable navigation agent.")
-
+    parser.add_argument("--nosimrun", action="store_true", help="Enable simulation.")  # default: False, --nosimrun:True
+    parser.add_argument("--navrun", action="store_true",
+                        help="Enable navigation agent.")  # default: False, --navrun:True
     args = parser.parse_args()
 
     if args.debug:
         import debugpy
 
-        ip_address = ("0.0.0.0", 5678)
+        ip_address = ("0.0.0.0", 7890)
         print(f"Process: {sys.argv[:]}")
         print(f"Is waiting for attach at {ip_address[0]}:{ip_address[1]}", flush=True)
         debugpy.listen(ip_address)
         debugpy.wait_for_client()
         debugpy.breakpoint()
 
-    if args.simrun:
+    if not args.nosimrun:
         ChannelFactoryInitialize(1, "lo")
         rclpy.init()
     else:

@@ -8,7 +8,6 @@ class StandAgent(BaseAgent):
     def __init__(self, logdir: None, robot_node: UnitreeGo2):
         super().__init__(logdir, robot_node)
 
-        self.firstRun = True
         self.startPos = [0.0] * self.robot_node.NUM_DOF
 
         # Target positions for standing up
@@ -31,6 +30,7 @@ class StandAgent(BaseAgent):
         self.duration_3 = 200
         self.duration_4 = 200
 
+        self.firstRun = True
         # Percentages for each phase
         self.percent_1 = 0.0
         self.percent_2 = 0.0
@@ -144,4 +144,9 @@ class StandAgent(BaseAgent):
         return action, self.p_gains, self.d_gains, done
 
     def reset(self):
-        pass
+        self.robot_node.logger.reset()
+        self.firstRun = True
+        self.percent_1 = 0.0
+        self.percent_2 = 0.0
+        self.percent_3 = 0.0
+        self.percent_4 = 0.0

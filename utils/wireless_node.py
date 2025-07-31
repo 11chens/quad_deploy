@@ -60,3 +60,6 @@ class Go2JoystickSubscriber:
         self.R1 = msg.keys & self.WirelessButtons.R1
         self.A = msg.keys & self.WirelessButtons.A
         self.X = msg.keys & self.WirelessButtons.X
+
+    def reset(self):
+        pass

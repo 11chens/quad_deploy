@@ -112,6 +112,9 @@ class CustomLogger:
         else:
             getattr(self.logger, "critical")(message)
 
+    def reset(self):
+        self.printed_messages.clear()
+
 
 # Example usage
 if __name__ == "__main__":

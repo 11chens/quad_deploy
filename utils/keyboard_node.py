@@ -5,24 +5,27 @@ from keyboard_msgs.msg import Key
 class KeyboardSubscriber:
 
     def __init__(self, rosnode=None):
+        self._init_keyvars()
+        self.cmd_vx = 0
+        self.cmd_vy = 0
+        self.cmd_vyaw = 0
+
+        self.keydown_sub = rosnode.create_subscription(Key, "/keydown", self._keydown_callback, 1)
+
+    def _init_keyvars(self):
         self.S = False
         self.X = False
         self.R1 = False
         self.R2 = False
         self.L1 = False
         self.L2 = False
-        self.cmd_vx = 0
-        self.cmd_vy = 0
-        self.cmd_vyaw = 0
 
         self.up = False
         self.down = False
         self.right = False
         self.left = False
-        self.keydown_sub = rosnode.create_subscription(Key, "/keydown", self._keyboard_callback, 1)
 
-    def _keyboard_callback(self, msg: Key):
-        """Callback for keyboard input, used to switch between different motions."""
+    def _keydown_callback(self, msg: Key):
         self.S = (msg.code == 115)  # S
         self.X = (msg.code == 120)  # X
         self.R1 = (msg.code == 113)  # Q
@@ -41,3 +44,6 @@ class KeyboardSubscriber:
         self.cmd_vyaw -= float(self.right)
         self.cmd_vx = max(min(self.cmd_vx, 1.0), -1)
         self.cmd_vyaw = max(min(self.cmd_vyaw, 1.0), -1)
+
+    def reset(self):
+        self._init_keyvars()
