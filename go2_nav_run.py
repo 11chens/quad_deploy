@@ -1,22 +1,25 @@
 import sys
+import threading
 import time
+
 import numpy as np
-from robot_real import UnitreeGo2
-from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import MotionSwitcherClient
-from unitree_sdk2py.go2.sport.sport_client import SportClient
+import rclpy
+from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import (
+    MotionSwitcherClient,
+)
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-from utils.node_handles import NodeHandle
-from utils.wireless_node import Go2JoystickSubscriber
+from unitree_sdk2py.go2.sport.sport_client import SportClient
+
 from agent.base import BaseAgent
-from agent.stand_agent import StandAgent
 from agent.locomotion_agent import LocomotionAgent
 from agent.navigation_agent import NavigationAgent
-import rclpy
-import threading
+from agent.stand_agent import StandAgent
+from robot_real import UnitreeGo2
+from utils.node_handles import NodeHandle
+from utils.wireless_node import Go2JoystickSubscriber
 
 
 class Go2NavRun(UnitreeGo2):
-
     def __init__(self, simrun, navrun, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.simrun = simrun
@@ -57,7 +60,7 @@ class Go2NavRun(UnitreeGo2):
         self.msc.Init()
 
         status, result = self.msc.CheckMode()
-        while result['name']:
+        while result["name"]:
             self.sc.StandDown()
             self.msc.ReleaseMode()
             status, result = self.msc.CheckMode()
@@ -72,7 +75,7 @@ class Go2NavRun(UnitreeGo2):
         if self.simrun:
             self.logger.debug(f"Start up keyboard node")
             self.joystick = self.ros_node.key_node
-            ros_thread = threading.Thread(target=rclpy.spin, args=(self.ros_node, ), daemon=True)
+            ros_thread = threading.Thread(target=rclpy.spin, args=(self.ros_node,), daemon=True)
             ros_thread.start()
         else:
             self.logger.debug(f"Start up joystick node")
@@ -87,7 +90,7 @@ class Go2NavRun(UnitreeGo2):
         for i in range(num_warm_iter):
             _, _, _, _ = self.agents[agent_name].step()
         delay = (time.perf_counter() - infer_start_time) / num_warm_iter
-        self.logger.debug(f'[{agent_name}] Infer Frequency: {delay*1e3:.3f} ms')
+        self.logger.debug(f"[{agent_name}] Infer Frequency: {delay*1e3:.3f} ms")
 
     def get_agent_switch(self, done: bool) -> str | None:
         """Determine if we need to switch to a different agent based on the done flag and Joystick.
@@ -173,18 +176,25 @@ def main(args=None):
             go2_nav_node.logger.debug(f"frequency: {frequency:.2f} Hz")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Run the Go2 robot.")
 
     parser.add_argument("--debug", action="store_true", help="Enable debug mode.")
-    parser.add_argument("--nodryrun", action="store_true",
-                        help="Disable dry run mode.")  # default: False, --nodryrun:True
-    parser.add_argument("--logdir", type=str, default="example/quad_deploy/models/onnx_models",
-                        help="Common directory for user's data (absolute path).")
+    parser.add_argument(
+        "--nodryrun", action="store_true", help="Disable dry run mode."
+    )  # default: False, --nodryrun:True
+    parser.add_argument(
+        "--logdir",
+        type=str,
+        default="example/quad_deploy/models/onnx_models",
+        help="Common directory for user's data (absolute path).",
+    )
     parser.add_argument("--nosimrun", action="store_true", help="Enable simulation.")  # default: False, --nosimrun:True
-    parser.add_argument("--navrun", action="store_true",
-                        help="Enable navigation agent.")  # default: False, --navrun:True
+    parser.add_argument(
+        "--navrun", action="store_true", help="Enable navigation agent."
+    )  # default: False, --navrun:True
     args = parser.parse_args()
 
     if args.debug:
@@ -201,6 +211,6 @@ if __name__ == '__main__':
         ChannelFactoryInitialize(1, "lo")
         rclpy.init()
     else:
-        ChannelFactoryInitialize(0, 'eth0')
+        ChannelFactoryInitialize(0, "eth0")
 
     main(args=args)

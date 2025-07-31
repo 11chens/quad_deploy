@@ -1,5 +1,5 @@
-from unitree_sdk2py.idl.unitree_go.msg.dds_ import WirelessController_
 from unitree_sdk2py.core.channel import ChannelSubscriber
+from unitree_sdk2py.idl.unitree_go.msg.dds_ import WirelessController_
 
 
 class WirelessButtons:

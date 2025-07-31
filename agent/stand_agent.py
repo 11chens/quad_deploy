@@ -1,10 +1,10 @@
 import numpy as np
-from robot_real import UnitreeGo2
+
 from agent.base import BaseAgent
+from robot_real import UnitreeGo2
 
 
 class StandAgent(BaseAgent):
-
     def __init__(self, logdir: None, robot_node: UnitreeGo2):
         super().__init__(logdir, robot_node)
 
@@ -14,15 +14,41 @@ class StandAgent(BaseAgent):
         self._targetPos_1 = [0.0, 1.36, -2.65, 0.0, 1.36, -2.65, -0.2, 1.36, -2.65, 0.2, 1.36, -2.65]
         self._targetPos_2 = [0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3]
 
-        self.stand_up_joint_pos = np.array([
-            0.00571868, 0.608813, -1.21763, -0.00571868, 0.608813, -1.21763, 0.00571868, 0.608813, -1.21763,
-            -0.00571868, 0.608813, -1.21763
-        ], dtype=np.float32)
+        self.stand_up_joint_pos = np.array(
+            [
+                0.00571868,
+                0.608813,
+                -1.21763,
+                -0.00571868,
+                0.608813,
+                -1.21763,
+                0.00571868,
+                0.608813,
+                -1.21763,
+                -0.00571868,
+                0.608813,
+                -1.21763,
+            ],
+            dtype=np.float32,
+        )
 
-        self.stand_down_joint_pos = np.array([
-            0.0473455, 1.22187, -2.44375, -0.0473455, 1.22187, -2.44375, 0.0473455, 1.22187, -2.44375, -0.0473455,
-            1.22187, -2.44375
-        ], dtype=np.float32)
+        self.stand_down_joint_pos = np.array(
+            [
+                0.0473455,
+                1.22187,
+                -2.44375,
+                -0.0473455,
+                1.22187,
+                -2.44375,
+                0.0473455,
+                1.22187,
+                -2.44375,
+                -0.0473455,
+                1.22187,
+                -2.44375,
+            ],
+            dtype=np.float32,
+        )
 
         # Duration for each phase of standing up
         self.duration_1 = 500
@@ -42,8 +68,8 @@ class StandAgent(BaseAgent):
         self.stand_kd = 5.0
         self.running_time = 0.0
         # NOTE: Dont assign values directly to avoid modifying the ground truth of robot
-        self.loco_kp = self.robot_node.stiffness['joint']
-        self.loco_kd = self.robot_node.damping['joint']
+        self.loco_kp = self.robot_node.stiffness["joint"]
+        self.loco_kd = self.robot_node.damping["joint"]
         self.p_gains = self.robot_node.p_gains.copy()
         self.d_gains = self.robot_node.d_gains.copy()
         self.final_dof_pos = self.robot_node.default_dof_pos.copy()
@@ -67,8 +93,9 @@ class StandAgent(BaseAgent):
         if self.percent_1 < 1:
             self.robot_node.logger.info("step into phase 1: move to targetPos1", once=True)
             for i in range(self.robot_node.NUM_DOF):
-                self.robot_coordinates_action[i] = (
-                    1 - self.percent_1) * self.startPos[i] + self.percent_1 * self._targetPos_1[i]
+                self.robot_coordinates_action[i] = (1 - self.percent_1) * self.startPos[
+                    i
+                ] + self.percent_1 * self._targetPos_1[i]
                 self.p_gains[i] = self.stand_kp
                 self.d_gains[i] = self.stand_kd
 
@@ -77,8 +104,9 @@ class StandAgent(BaseAgent):
             self.percent_2 += 1.0 / self.duration_2
             self.percent_2 = min(self.percent_2, 1)
             for i in range(self.robot_node.NUM_DOF):
-                self.robot_coordinates_action[i] = (
-                    1 - self.percent_2) * self._targetPos_1[i] + self.percent_2 * self._targetPos_2[i]
+                self.robot_coordinates_action[i] = (1 - self.percent_2) * self._targetPos_1[
+                    i
+                ] + self.percent_2 * self._targetPos_2[i]
                 self.p_gains[i] = self.stand_kp
                 self.d_gains[i] = self.stand_kd
 
@@ -96,8 +124,9 @@ class StandAgent(BaseAgent):
             self.percent_4 += 1 / self.duration_4
             self.percent_4 = min(self.percent_4, 1)
             for i in range(self.robot_node.NUM_DOF):
-                self.robot_coordinates_action[i] = (
-                    1 - self.percent_4) * self._targetPos_2[i] + self.percent_4 * self.final_dof_pos[i]
+                self.robot_coordinates_action[i] = (1 - self.percent_4) * self._targetPos_2[
+                    i
+                ] + self.percent_4 * self.final_dof_pos[i]
                 self.p_gains[i] = (1 - self.percent_4) * self.stand_kp + self.percent_4 * self.loco_kp
                 self.d_gains[i] = (1 - self.percent_4) * self.stand_kd + self.percent_4 * self.loco_kd
 
@@ -116,12 +145,13 @@ class StandAgent(BaseAgent):
         self.stand_kp = 50.0
         self.stand_kd = 3.5
         self.running_time += 0.005
-        if (self.running_time < 3.0):
+        if self.running_time < 3.0:
             self.robot_node.logger.info("step into phase 1", once=True)
             phase = np.tanh(self.running_time / 1.2)
             for i in range(self.robot_node.NUM_DOF):
-                self.robot_coordinates_action[i] = phase * self.stand_up_joint_pos[i] + (
-                    1 - phase) * self.stand_down_joint_pos[i]
+                self.robot_coordinates_action[i] = (
+                    phase * self.stand_up_joint_pos[i] + (1 - phase) * self.stand_down_joint_pos[i]
+                )
                 self.p_gains[i] = phase * 50.0 + (1 - phase) * 20.0
                 self.d_gains[i] = 3.5
         elif self.percent_4 < 1:
@@ -129,8 +159,9 @@ class StandAgent(BaseAgent):
             self.percent_4 += 1 / 400
             self.percent_4 = min(self.percent_4, 1)
             for i in range(self.robot_node.NUM_DOF):
-                self.robot_coordinates_action[i] = (1 - self.percent_4) * \
-                    self.stand_up_joint_pos[i] + self.percent_4 * self.final_dof_pos[i]
+                self.robot_coordinates_action[i] = (1 - self.percent_4) * self.stand_up_joint_pos[
+                    i
+                ] + self.percent_4 * self.final_dof_pos[i]
                 self.p_gains[i] = (1 - self.percent_4) * self.stand_kp + self.percent_4 * self.loco_kp
                 self.d_gains[i] = (1 - self.percent_4) * self.stand_kd + self.percent_4 * self.loco_kd
         else:

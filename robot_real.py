@@ -1,34 +1,39 @@
-import sys
-import numpy as np
-
-from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber
-from unitree_sdk2py.idl.default import unitree_go_msg_dds__LowCmd_
-from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_, LowState_
-from unitree_sdk2py.idl.default import unitree_go_msg_dds__LowState_
-
-import sys
 import os
-from robot_cfgs import RobotCfgs
-from utils.math_utils import quat_rotate_inverse
+import sys
+
+import numpy as np
+from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber
+from unitree_sdk2py.idl.default import (
+    unitree_go_msg_dds__LowCmd_,
+    unitree_go_msg_dds__LowState_,
+)
+from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_, LowState_
 from unitree_sdk2py.utils.crc import CRC
 
+from robot_cfgs import RobotCfgs
+from utils.math_utils import quat_rotate_inverse
+
 if os.uname().machine in ["x86_64", "amd64"]:
-    sys.path.append(os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "x86",
-    ))
+    sys.path.append(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "x86",
+        )
+    )
 elif os.uname().machine == "aarch64":
-    sys.path.append(os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "aarch64",
-    ))
+    sys.path.append(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "aarch64",
+        )
+    )
 
 # from crc_module import get_crc
 from utils.logger import CustomLogger
 
 
-class UnitreeGo2():
-    """ A proxy implementation of the real Go2 robot. """
+class UnitreeGo2:
+    """A proxy implementation of the real Go2 robot."""
 
     def __init__(
         self,
@@ -62,7 +67,7 @@ class UnitreeGo2():
         self._init_buffers()
 
     def parse_config(self):
-        """ parse, set attributes from config dict, initialize buffers to speed up the computation """
+        """parse, set attributes from config dict, initialize buffers to speed up the computation"""
         self.up_axis_idx = 2  # 2 for z, 1 for y -> adapt gravity accordingly
         self.gravity_vec = np.zeros(3)
         self.gravity_vec[self.up_axis_idx] = -1
@@ -108,7 +113,7 @@ class UnitreeGo2():
         self.reindex(self.joint_limits_low)
 
     def _init_buffers(self):
-        """ Initialize buffers to speed up the computation """
+        """Initialize buffers to speed up the computation"""
         self.dof_pos_ = np.zeros(self.NUM_DOF, dtype=np.float32)
         self.dof_vel_ = np.zeros(self.NUM_DOF, dtype=np.float32)
         self.dof_action = np.zeros(self.NUM_DOF, dtype=np.float32)
@@ -118,7 +123,7 @@ class UnitreeGo2():
         self.joint_pos_protect_low = np.zeros(self.NUM_DOF, dtype=np.float32)
 
     def start_handlers(self):
-        """ Start the handlers for the unitree robot. """
+        """Start the handlers for the unitree robot."""
         self.low_state_sub = ChannelSubscriber(self.low_state_topic, LowState_)
         self.low_state_sub.Init(self._low_state_callback, 1)
         self.logger.info("Waiting for robot low state message")
@@ -139,7 +144,7 @@ class UnitreeGo2():
             sim_data[real_idx] = temp_sim_data[sim_idx].item()
 
     def clip_by_torque_limit(self, actions_scaled):
-        """ Different from simulation, we reverse the process and clip the actions directly,
+        """Different from simulation, we reverse the process and clip the actions directly,
         so that the PD controller runs in robot but not our script.
         """
         p_limits_low = (-self.torque_limits) + self.d_gains * self.dof_vel_
@@ -150,7 +155,7 @@ class UnitreeGo2():
         return np.clip(actions_scaled, actions_low, actions_high)
 
     def send_action(self, action=None, p_gains=None, d_gains=None):
-        """ Send the action to the robot motors, which does the preprocessing
+        """Send the action to the robot motors, which does the preprocessing
         just like env.step in simulation.
         Thus, the actions has the batch dimension, whose size is 1.
         """
@@ -173,12 +178,18 @@ class UnitreeGo2():
 
     @property
     def projected_gravity(self):
-        quat_wxyz = np.quaternion(self.low_state.imu_state.quaternion[0], self.low_state.imu_state.quaternion[1],
-                                  self.low_state.imu_state.quaternion[2], self.low_state.imu_state.quaternion[3])
+        quat_wxyz = np.quaternion(
+            self.low_state.imu_state.quaternion[0],
+            self.low_state.imu_state.quaternion[1],
+            self.low_state.imu_state.quaternion[2],
+            self.low_state.imu_state.quaternion[3],
+        )
         return quat_rotate_inverse(
             quat_wxyz,
             self.gravity_vec,
-        ).astype(np.float32)  # shape (3,)
+        ).astype(
+            np.float32
+        )  # shape (3,)
 
     @property
     def last_action(self):
@@ -187,7 +198,7 @@ class UnitreeGo2():
     @property
     def dof_pos_rel(self):
         """Get the joint position relative to the default joint position"""
-        return (self.dof_pos_ - self.default_dof_pos)
+        return self.dof_pos_ - self.default_dof_pos
 
     @property
     def dof_pos(self):
@@ -199,7 +210,7 @@ class UnitreeGo2():
         return self.dof_vel_
 
     def _low_state_callback(self, msg: LowState_):
-        """ store and handle proprioception data """
+        """store and handle proprioception data"""
         self.low_state = msg  # keep the latest low state
         self.robot_yaw = np.array(self.low_state.imu_state.rpy[2], dtype=np.float32)
         # refresh dof_pos and dof_vel
@@ -210,16 +221,19 @@ class UnitreeGo2():
         # automatic safety check
         if self.safe_check:
             for i in range(self.NUM_DOF):
-                if self.dof_pos_[i] > self.joint_pos_protect_high[i] or \
-                    self.dof_pos_[i] < self.joint_pos_protect_low[i]:
-                    self.logger.warning(f"Joint {i}, position out of range at {self.low_state.motor_state[i].q}",
-                                        once=True)
+                if (
+                    self.dof_pos_[i] > self.joint_pos_protect_high[i]
+                    or self.dof_pos_[i] < self.joint_pos_protect_low[i]
+                ):
+                    self.logger.warning(
+                        f"Joint {i}, position out of range at {self.low_state.motor_state[i].q}", once=True
+                    )
                     self.logger.warning("The motors and this process shuts down.", once=True)
                     self.turn_off_motors()
                     # raise SystemExit()
 
     def _publish_legs_cmd(self, robot_coordinates_action, p_gains, d_gains):
-        """ Publish the joint commands to the robot legs in robot coordinates system.
+        """Publish the joint commands to the robot legs in robot coordinates system.
         action: shape (NUM_DOF,), in simulation order.
         """
         if p_gains is None:
@@ -231,8 +245,8 @@ class UnitreeGo2():
             if self.dry_run:
                 self.low_cmd.motor_cmd[i].mode = 0x00
             self.low_cmd.motor_cmd[i].q = robot_coordinates_action[i]
-            self.low_cmd.motor_cmd[i].dq = 0.
-            self.low_cmd.motor_cmd[i].tau = 0.
+            self.low_cmd.motor_cmd[i].dq = 0.0
+            self.low_cmd.motor_cmd[i].tau = 0.0
             self.low_cmd.motor_cmd[i].kp = p_gains[i]
             self.low_cmd.motor_cmd[i].kd = d_gains[i]
 
@@ -253,13 +267,13 @@ class UnitreeGo2():
             self.low_cmd.motor_cmd[i].tau = 0
 
     def turn_off_motors(self):
-        """ Turn off the motors """
+        """Turn off the motors"""
         for i in range(self.NUM_DOF):
             self.low_cmd.motor_cmd[i].mode = 0x00
-            self.low_cmd.motor_cmd[i].q = 0.
-            self.low_cmd.motor_cmd[i].dq = 0.
-            self.low_cmd.motor_cmd[i].tau = 0.
-            self.low_cmd.motor_cmd[i].kp = 0.
-            self.low_cmd.motor_cmd[i].kd = 0.
+            self.low_cmd.motor_cmd[i].q = 0.0
+            self.low_cmd.motor_cmd[i].dq = 0.0
+            self.low_cmd.motor_cmd[i].tau = 0.0
+            self.low_cmd.motor_cmd[i].kp = 0.0
+            self.low_cmd.motor_cmd[i].kd = 0.0
         self.low_cmd.crc = self.crc.Crc(self.low_cmd)
         self.low_cmd_pub.Write(self.low_cmd)

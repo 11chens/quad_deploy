@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+
 import numpy as np
+
 from robot_cfgs import RobotCfgs
 
 
@@ -17,8 +19,9 @@ class BaseAgent(ABC):
     def parse_obs_config(self):
         self.commands_scale = []
         self.obs_scale = RobotCfgs.AgentCfg.obs_scale
-        self.commands_scale = np.array([self.obs_scale.lin_vel, self.obs_scale.lin_vel, self.obs_scale.ang_vel],
-                                       dtype=np.float32)
+        self.commands_scale = np.array(
+            [self.obs_scale.lin_vel, self.obs_scale.lin_vel, self.obs_scale.ang_vel], dtype=np.float32
+        )
         self.num_commands = RobotCfgs.AgentCfg.num_commands
         self.commands = np.zeros(self.num_commands, dtype=np.float32)
         self.pre_commands = np.zeros(self.num_commands, dtype=np.float32)

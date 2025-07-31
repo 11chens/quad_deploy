@@ -2,7 +2,6 @@ import numpy as np
 
 
 class RobotCfgs:
-
     class Go2:
         HIGHLEVEL = 0xEE
         LOWLEVEL = 0xFF
@@ -40,68 +39,75 @@ class RobotCfgs:
             "RR_thigh_joint",  # 10， 1.0
             "RR_calf_joint",  # 11， -1.5
         ]
-        joint_limits_high = np.array([
-            1.0472,
-            3.4907,
-            -0.83776,
-            1.0472,
-            3.4907,
-            -0.83776,
-            1.0472,
-            4.5379,
-            -0.83776,
-            1.0472,
-            4.5379,
-            -0.83776,
-        ], dtype=np.float32)
-        joint_limits_low = np.array([
-            -1.0472,
-            -1.5708,
-            -2.7227,
-            -1.0472,
-            -1.5708,
-            -2.7227,
-            -1.0472,
-            -0.5236,
-            -2.7227,
-            -1.0472,
-            -0.5236,
-            -2.7227,
-        ], dtype=np.float32)
-        torque_limits = np.array([
-            25,
-            40,
-            40,
-            25,
-            40,
-            40,
-            25,
-            40,
-            40,
-            25,
-            40,
-            40,
-        ], dtype=np.float32)
+        joint_limits_high = np.array(
+            [
+                1.0472,
+                3.4907,
+                -0.83776,
+                1.0472,
+                3.4907,
+                -0.83776,
+                1.0472,
+                4.5379,
+                -0.83776,
+                1.0472,
+                4.5379,
+                -0.83776,
+            ],
+            dtype=np.float32,
+        )
+        joint_limits_low = np.array(
+            [
+                -1.0472,
+                -1.5708,
+                -2.7227,
+                -1.0472,
+                -1.5708,
+                -2.7227,
+                -1.0472,
+                -0.5236,
+                -2.7227,
+                -1.0472,
+                -0.5236,
+                -2.7227,
+            ],
+            dtype=np.float32,
+        )
+        torque_limits = np.array(
+            [
+                25,
+                40,
+                40,
+                25,
+                40,
+                40,
+                25,
+                40,
+                40,
+                25,
+                40,
+                40,
+            ],
+            dtype=np.float32,
+        )
         turn_on_motor_mode = [0x01] * 12
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-            'FL_hip_joint': 0.1,
-            'RL_hip_joint': 0.1,
-            'FR_hip_joint': -0.1,
-            'RR_hip_joint': -0.1,
-
-            'FL_thigh_joint': 0.8,
-            'RL_thigh_joint': 1.,
-            'FR_thigh_joint': 0.8,
-            'RR_thigh_joint': 1.,
-
-            'FL_calf_joint': -1.5,
-            'RL_calf_joint': -1.5,
-            'FR_calf_joint': -1.5,
-            'RR_calf_joint': -1.5,
+            "FL_hip_joint": 0.1,
+            "RL_hip_joint": 0.1,
+            "FR_hip_joint": -0.1,
+            "RR_hip_joint": -0.1,
+            "FL_thigh_joint": 0.8,
+            "RL_thigh_joint": 1.0,
+            "FR_thigh_joint": 0.8,
+            "RR_thigh_joint": 1.0,
+            "FL_calf_joint": -1.5,
+            "RL_calf_joint": -1.5,
+            "FR_calf_joint": -1.5,
+            "RR_calf_joint": -1.5,
         }
-        stiffness = {'joint': 30.}  # [N*m/rad]
-        damping = {'joint': 0.75}  # [N*m*s/rad]
+        stiffness = {"joint": 30.0}  # [N*m/rad]
+        damping = {"joint": 0.75}  # [N*m*s/rad]
         action_scale = 0.25
         computer_clip_torque = True
 

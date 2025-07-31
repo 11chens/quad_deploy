@@ -10,7 +10,14 @@ setup(
     description="Unitree Onboard code supporting Unitree Go2 robot and auto-loading configurations",
     python_requires=">=3.6",
     install_requires=[
-        "onnxruntime", "numpy", "numpy-quaternion", "debugpy", "mujoco", "pygame", "onnx", "pre-commit"
+        "onnxruntime",
+        "numpy",
+        "numpy-quaternion",
+        "debugpy",
+        "mujoco",
+        "pygame",
+        "onnx",
+        "pre-commit",
         # "rclpy",
     ],
 )

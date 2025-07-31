@@ -1,15 +1,15 @@
 import numpy as np
-from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Pose2D
+from sensor_msgs.msg import LaserScan
+
 from utils.math_utils import CircularBuffer
 
 
 class LidarSubscriber:
-
     def __init__(self, rosnode=None):
         self.rays_hist_ = CircularBuffer(5)
-        self.ray_sub = rosnode.create_subscription(LaserScan, '/rays', self._perception_callback, 10)
-        self.pose_sub = rosnode.create_subscription(Pose2D, '/pose', self._odom_callback, 10)
+        self.ray_sub = rosnode.create_subscription(LaserScan, "/rays", self._perception_callback, 10)
+        self.pose_sub = rosnode.create_subscription(Pose2D, "/pose", self._odom_callback, 10)
 
     def _perception_callback(self, msg: LaserScan):
         try:

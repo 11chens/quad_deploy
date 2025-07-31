@@ -1,19 +1,23 @@
-from loguru import logger
-import time
 import sys
-from typing import Set, Optional
+import time
+from typing import Optional, Set
+
+from loguru import logger
 
 
 class CustomLogger:
     """A custom logger class based on Loguru with once, throttle, and colored terminal output."""
 
     def __init__(
-        self, name: str = __name__, log_file: Optional[str] = None, rotation: str = "10 MB",
-        format: str = "<green>{time:YY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <white>{message}</white>"
+        self,
+        name: str = __name__,
+        log_file: Optional[str] = None,
+        rotation: str = "10 MB",
+        format: str = "<green>{time:YY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <white>{message}</white>",
     ):
         """
         Initialize the custom logger with colored terminal output and optional file output.
-        
+
         Args:
             name: Logger name, defaults to module name.
             log_file: Path to log file, if None, logs to terminal only.
@@ -29,10 +33,7 @@ class CustomLogger:
 
         # Add terminal sink with colored output
         self.logger.add(
-            sink=sys.stderr,
-            level="DEBUG",
-            format=format,
-            colorize=True  # Explicitly enable colored output
+            sink=sys.stderr, level="DEBUG", format=format, colorize=True  # Explicitly enable colored output
         )
 
         # Add file sink if specified (without color tags)
@@ -41,14 +42,19 @@ class CustomLogger:
                 sink=log_file,
                 rotation=rotation,
                 level="DEBUG",
-                format=format.replace("<green>", "").replace("</green>", "").replace("<level>", "").replace(
-                    "</level>", "").replace("<white>", "").replace("</white>", ""),  # Remove color tags for file
-                colorize=False)
+                format=format.replace("<green>", "")
+                .replace("</green>", "")
+                .replace("<level>", "")
+                .replace("</level>", "")
+                .replace("<white>", "")
+                .replace("</white>", ""),  # Remove color tags for file
+                colorize=False,
+            )
 
     def log_once(self, message: str, level: str):
         """
         Log a message only once.
-        
+
         Args:
             message: The message to log.
             level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
@@ -60,7 +66,7 @@ class CustomLogger:
     def log_throttle(self, message: str, seconds: float, level: str = "INFO"):
         """
         Log a message with a minimum time interval between logs.
-        
+
         Args:
             message: The message to log.
             seconds: Minimum interval between logs in seconds.
@@ -75,7 +81,7 @@ class CustomLogger:
     def _log(self, message: str, level: str = "INFO"):
         """
         Log a message without restrictions.
-        
+
         Args:
             message: The message to log.
             level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
