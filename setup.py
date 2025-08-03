@@ -14,10 +14,11 @@ setup(
         "numpy",
         "numpy-quaternion",
         "debugpy",
-        "mujoco",
         "pygame",
         "onnx",
         "pre-commit",
+        "loguru",
         # "rclpy",
+        # "mujoco",
     ],
 )

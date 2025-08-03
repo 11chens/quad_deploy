@@ -3,7 +3,6 @@ import threading
 import time
 
 import numpy as np
-import rclpy
 from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import (
     MotionSwitcherClient,
 )
@@ -85,7 +84,8 @@ class Go2NavRun(UnitreeGo2):
         else:
             self.logger.debug(f"Start up joystick node")
             self.joystick = Go2JoystickSubscriber()
-
+            self.init_motors()
+            self.init_client()
         self.curr_agent = self.agents[start_agent]
         self.curr_agent.reset()
 
@@ -121,17 +121,18 @@ class Go2NavRun(UnitreeGo2):
         return None
 
     def emergency_handle(self):
-        if self.joystick.L2:
+        if self.joystick.L2 and not self.EMERGENCY:
             self.EMERGENCY = True
             self.turn_off_motors()
             self.logger.warning("L2 is pressed, The motors shuts down.")
-            self.joystick.reset()
 
         if self.joystick.L1 and self.EMERGENCY:
             self.EMERGENCY = False
             self.logger.info("L1 is pressed, robot will recovery.")
             self.curr_agent = self.agents["stand"]
             self.curr_agent.reset()
+            self.timestamp = 0
+            self.init_motors()
 
     def main_loop(self) -> None:
         """Main loop that runs the state machine to control the robot."""
@@ -162,10 +163,6 @@ def main(args=None):
         agents_dict=agents_dict,
         dry_run=not args.nodryrun,
     )
-
-    if args.nosimrun:
-        go2_nav_node.init_client()
-        go2_nav_node.init_motors()
 
     for agent_name, agent_class in go2_nav_node.agents_dict.items():
         go2_nav_node.create_and_register_agent(logdir=args.logdir, agent_name=agent_name, agent_class=agent_class)
@@ -202,7 +199,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--logdir",
         type=str,
-        default="example/quad_deploy/models/onnx_models",
+        default="models/onnx_models",
         help="Common directory for user's data (absolute path).",
     )
     parser.add_argument(
@@ -225,6 +222,8 @@ if __name__ == "__main__":
 
     if not args.nosimrun:
         ChannelFactoryInitialize(1, "lo")
+        import rclpy
+
         rclpy.init()
     else:
         ChannelFactoryInitialize(0, "eth0")

@@ -25,6 +25,25 @@ class Go2JoystickSubscriber:
     """Class to handle Unitree go2 joystick inputs for controlling the robot."""
 
     def __init__(self):
+        self._init_keys()
+        self.WirelessButtons = WirelessButtons
+        self.joy_stick_topic = "rt/wirelesscontroller"
+        self.joy_stick_sub = ChannelSubscriber(self.joy_stick_topic, WirelessController_)
+        self.joy_stick_sub.Init(self._joy_stick_callback, 1)
+
+    def _joy_stick_callback(self, msg: WirelessController_):
+        """Update joystick state based on the received message."""
+        self.cmd_vx = msg.ly
+        self.cmd_vy = -msg.lx
+        self.cmd_vyaw = -msg.rx
+        self.L2 = msg.keys & self.WirelessButtons.L2
+        self.L1 = msg.keys & self.WirelessButtons.L1
+        self.R2 = msg.keys & self.WirelessButtons.R2
+        self.R1 = msg.keys & self.WirelessButtons.R1
+        self.A = msg.keys & self.WirelessButtons.A
+        self.X = msg.keys & self.WirelessButtons.X
+
+    def _init_keys(self):
         self.R1 = False
         self.L1 = False
         self.start = False
@@ -44,22 +63,6 @@ class Go2JoystickSubscriber:
         self.cmd_vx = 0
         self.cmd_vy = 0
         self.cmd_vyaw = 0
-        self.WirelessButtons = WirelessButtons
-        self.joy_stick_topic = "rt/wirelesscontroller"
-        self.joy_stick_sub = ChannelSubscriber(self.joy_stick_topic, WirelessController_)
-        self.joy_stick_sub.Init(self._joy_stick_callback, 1)
-
-    def _joy_stick_callback(self, msg: WirelessController_):
-        """Update joystick state based on the received message."""
-        self.cmd_vx = msg.ly
-        self.cmd_vy = -msg.lx
-        self.cmd_vyaw = -msg.rx
-        self.L2 = msg.keys & self.WirelessButtons.L2
-        self.L1 = msg.keys & self.WirelessButtons.L1
-        self.R2 = msg.keys & self.WirelessButtons.R2
-        self.R1 = msg.keys & self.WirelessButtons.R1
-        self.A = msg.keys & self.WirelessButtons.A
-        self.X = msg.keys & self.WirelessButtons.X
 
     def reset(self):
-        pass
+        self._init_keys()

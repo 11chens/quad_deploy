@@ -51,10 +51,10 @@ class StandAgent(BaseAgent):
         )
 
         # Duration for each phase of standing up
-        self.duration_1 = 125  # 500
-        self.duration_2 = 125  # 500
-        self.duration_3 = 50  # 200
-        self.duration_4 = 50  # 200
+        self.duration_1 = 50  # 500 125
+        self.duration_2 = 50  # 500 125
+        self.duration_3 = 100  # 200
+        self.duration_4 = 100  # 200
 
         self.firstRun = True
         # Percentages for each phase
