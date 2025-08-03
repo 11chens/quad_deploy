@@ -32,6 +32,23 @@ class CircularBuffer:
         self._num_pushes = 0
 
 
+class VectorLPFilter:
+    def __init__(self, sample_period, cutoff_freq, num_channels=3):
+        self.weight = 1.0 / (1.0 + 1.0 / (2 * np.pi * sample_period * cutoff_freq))
+        self.past_values = np.zeros(num_channels)
+        self.initialized = False
+
+    def update(self, new_values: np.ndarray):
+        if not self.initialized:
+            self.past_values = new_values.copy()
+            self.initialized = True
+        else:
+            self.past_values = self.weight * new_values + (1 - self.weight) * self.past_values
+
+    def get_values(self) -> np.ndarray:
+        return self.past_values.copy()
+
+
 def quat_rotate_inverse(q: np.quaternion, v: np.array):
     """q must be numpy-quaternion object in w, x, y, z order
     NOTE: non-batchwise version
@@ -40,14 +57,10 @@ def quat_rotate_inverse(q: np.quaternion, v: np.array):
     return quaternion.rotate_vectors(q_inv, v)
 
 
-def quat_yaw_component(q: np.quaternion):
-    """Get the yaw angle from a quaternion in w, x, y, z order.
-    The yaw angle is in radians and in the range of [-pi, pi].
-    """
-    # Extract the yaw angle from the quaternion
-    yaw = np.arctan2(2 * (q.x * q.y + q.w * q.z), q.w**2 - q.x**2 - q.y**2 + q.z**2)
-    # Normalize the yaw angle to be in the range of [-pi, pi]
-    return warp2pi(yaw)
+def quat_rotate_inverse_ori(q, v):
+    q_w = q[0]
+    q_vec = q[1:]
+    return v * (2 * q_w**2 - 1) - 2 * q_w * np.cross(q_vec, v) + 2 * np.dot(q_vec, v) * q_vec
 
 
 def warp2pi(angle_rad):

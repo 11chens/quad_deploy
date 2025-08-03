@@ -1,16 +1,12 @@
 from keyboard_msgs.msg import Key
-from rclpy.node import Node
 
 
 class KeyboardSubscriber:
-    def __init__(self, rosnode=None):
-        self._init_keyvars()
-        self.cmd_vx = 0
-        self.cmd_vy = 0
-        self.cmd_vyaw = 0
-        self.keydown_sub = rosnode.create_subscription(Key, "/keydown", self._keydown_callback, 1)
+    def __init__(self, ros_mangager=None):
+        self._init_keys()
+        self.keydown_sub = ros_mangager.create_subscription(Key, "/keydown", self._keydown_callback, 1)
 
-    def _init_keyvars(self):
+    def _init_keys(self):
         self.S = False
         self.X = False
         self.R1 = False
@@ -22,6 +18,10 @@ class KeyboardSubscriber:
         self.down = False
         self.right = False
         self.left = False
+
+        self.cmd_vx = 0
+        self.cmd_vy = 0
+        self.cmd_vyaw = 0
 
     def _keydown_callback(self, msg: Key):
         self.S = msg.code == 115  # S
@@ -44,4 +44,4 @@ class KeyboardSubscriber:
         self.cmd_vyaw = max(min(self.cmd_vyaw, 1.0), -1)
 
     def reset(self):
-        self._init_keyvars()
+        self._init_keys()

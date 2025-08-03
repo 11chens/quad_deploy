@@ -35,3 +35,7 @@ class BaseAgent(ABC):
     def reset(self):
         """Reset the agent. This is a placeholder for any reset logic if needed."""
         pass
+
+    @property
+    def done(self):
+        return False

@@ -6,15 +6,14 @@ from utils.math_utils import CircularBuffer
 
 
 class LidarSubscriber:
-    def __init__(self, rosnode=None):
+    def __init__(self, ros_mangager=None):
         self.rays_hist_ = CircularBuffer(5)
-        self.ray_sub = rosnode.create_subscription(LaserScan, "/rays", self._perception_callback, 10)
-        self.pose_sub = rosnode.create_subscription(Pose2D, "/pose", self._odom_callback, 10)
+        self.ray_sub = ros_mangager.create_subscription(LaserScan, "/rays", self._perception_callback, 10)
+        self.pose_sub = ros_mangager.create_subscription(Pose2D, "/pose", self._odom_callback, 10)
 
     def _perception_callback(self, msg: LaserScan):
         try:
             self.rays_ = np.asarray(msg.ranges, dtype=np.float32)
-            self.rays_ = np.log2(np.clip(self.rays_, 0.1, 5.0))
             self.rays_hist_.append(self.rays_)
         except Exception as e:
             self.get_logger().error(f"Perception data processing error: {str(e)}")

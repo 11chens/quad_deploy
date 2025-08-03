@@ -1,17 +1,19 @@
 import os
 import sys
+import time
 
 import numpy as np
 from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber
-from unitree_sdk2py.idl.default import (
-    unitree_go_msg_dds__LowCmd_,
-    unitree_go_msg_dds__LowState_,
-)
+from unitree_sdk2py.idl.default import unitree_go_msg_dds__LowCmd_
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_, LowState_
 from unitree_sdk2py.utils.crc import CRC
 
 from robot_cfgs import RobotCfgs
-from utils.math_utils import quat_rotate_inverse
+from utils.math_utils import (
+    VectorLPFilter,
+    quat_rotate_inverse,
+    quat_rotate_inverse_ori,
+)
 
 if os.uname().machine in ["x86_64", "amd64"]:
     sys.path.append(
@@ -63,8 +65,8 @@ class UnitreeGo2:
         self.low_cmd_topic = low_cmd_topic
         self.logger = CustomLogger()
         self.crc = CRC()
+        self.init_buffers()
         self.parse_config()
-        self._init_buffers()
 
     def parse_config(self):
         """parse, set attributes from config dict, initialize buffers to speed up the computation"""
@@ -104,35 +106,26 @@ class UnitreeGo2:
         self.joint_pos_protect_high = joint_pos_mid + joint_pos_range * self.dof_pos__protect_ratio
         self.joint_pos_protect_low = joint_pos_mid - joint_pos_range * self.dof_pos__protect_ratio
         self.action = np.zeros(self.NUM_ACTIONS, dtype=np.float32)
+        self.ang_vel_filter_ = VectorLPFilter(0.02, cutoff_freq=3.0, num_channels=3)
 
         self.reindex(self.torque_limits)
         self.reindex(self.default_dof_pos)
         self.reindex(self.joint_pos_protect_high)
         self.reindex(self.joint_pos_protect_low)
-        self.reindex(self.joint_limits_high)
-        self.reindex(self.joint_limits_low)
 
-    def _init_buffers(self):
+    def init_buffers(self):
         """Initialize buffers to speed up the computation"""
         self.dof_pos_ = np.zeros(self.NUM_DOF, dtype=np.float32)
         self.dof_vel_ = np.zeros(self.NUM_DOF, dtype=np.float32)
-        self.dof_action = np.zeros(self.NUM_DOF, dtype=np.float32)
-        self.robot_yaw = np.zeros(1, dtype=np.float32)
-
-        self.joint_pos_protect_high = np.zeros(self.NUM_DOF, dtype=np.float32)
-        self.joint_pos_protect_low = np.zeros(self.NUM_DOF, dtype=np.float32)
 
     def start_handlers(self):
         """Start the handlers for the unitree robot."""
         self.low_state_sub = ChannelSubscriber(self.low_state_topic, LowState_)
         self.low_state_sub.Init(self._low_state_callback, 1)
         self.logger.info("Waiting for robot low state message")
-        while True:
-            if hasattr(self, "low_state"):
-                break
+        while not hasattr(self, "low_state"):
+            time.sleep(0.1)
         self.logger.info("Low state message received, the robot is ready to go!")
-        # self.low_state = unitree_go_msg_dds__LowState_()
-        # self.low_state.imu_state.quaternion = [1.0, 0.0, 0.0, 0.0]
         self.low_cmd = unitree_go_msg_dds__LowCmd_()
         self.low_cmd_pub = ChannelPublisher(self.low_cmd_topic, LowCmd_)
         self.low_cmd_pub.Init()
@@ -159,7 +152,9 @@ class UnitreeGo2:
         just like env.step in simulation.
         Thus, the actions has the batch dimension, whose size is 1.
         """
-        self.action = action
+        self.action = action if action is not None else self.action
+        self.p_gains = p_gains if p_gains is not None else self.p_gains
+        self.d_gains = d_gains if d_gains is not None else self.d_gains
         if self.computer_clip_torque:
             clipped_scaled_action = action * self.action_scale
             clipped_scaled_action = self.clip_by_torque_limit(action * self.action_scale)
@@ -175,6 +170,15 @@ class UnitreeGo2:
             self.low_state.imu_state.gyroscope,
             dtype=np.float32,
         )
+
+    @property
+    def base_ang_vel_filter(self):
+        base_ang_vel_raw = np.array(
+            self.low_state.imu_state.gyroscope,
+            dtype=np.float32,
+        )
+        self.ang_vel_filter_.update(base_ang_vel_raw)
+        return self.ang_vel_filter_.get_values()
 
     @property
     def projected_gravity(self):
@@ -212,7 +216,6 @@ class UnitreeGo2:
     def _low_state_callback(self, msg: LowState_):
         """store and handle proprioception data"""
         self.low_state = msg  # keep the latest low state
-        self.robot_yaw = np.array(self.low_state.imu_state.rpy[2], dtype=np.float32)
         # refresh dof_pos and dof_vel
         for i in range(self.NUM_DOF):
             self.dof_pos_[i] = self.low_state.motor_state[i].q
@@ -265,6 +268,8 @@ class UnitreeGo2:
             self.low_cmd.motor_cmd[i].dq = getattr(RobotCfgs, self.robot_class_name).VelStopF
             self.low_cmd.motor_cmd[i].kd = 0
             self.low_cmd.motor_cmd[i].tau = 0
+        self.low_cmd.crc = self.crc.Crc(self.low_cmd)
+        self.low_cmd_pub.Write(self.low_cmd)
 
     def turn_off_motors(self):
         """Turn off the motors"""

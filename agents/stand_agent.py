@@ -1,6 +1,6 @@
 import numpy as np
 
-from agent.base import BaseAgent
+from agents.base import BaseAgent
 from robot_real import UnitreeGo2
 
 
@@ -51,10 +51,10 @@ class StandAgent(BaseAgent):
         )
 
         # Duration for each phase of standing up
-        self.duration_1 = 500
-        self.duration_2 = 500
-        self.duration_3 = 200
-        self.duration_4 = 200
+        self.duration_1 = 125  # 500
+        self.duration_2 = 125  # 500
+        self.duration_3 = 50  # 200
+        self.duration_4 = 50  # 200
 
         self.firstRun = True
         # Percentages for each phase
@@ -70,8 +70,8 @@ class StandAgent(BaseAgent):
         # NOTE: Dont assign values directly to avoid modifying the ground truth of robot
         self.loco_kp = self.robot_node.stiffness["joint"]
         self.loco_kd = self.robot_node.damping["joint"]
-        self.p_gains = self.robot_node.p_gains.copy()
-        self.d_gains = self.robot_node.d_gains.copy()
+        self.p_gains_ = self.robot_node.p_gains.copy()
+        self.d_gains_ = self.robot_node.d_gains.copy()
         self.final_dof_pos = self.robot_node.default_dof_pos.copy()
         self.robot_coordinates_action = np.zeros_like(self.final_dof_pos)
 
@@ -96,8 +96,8 @@ class StandAgent(BaseAgent):
                 self.robot_coordinates_action[i] = (1 - self.percent_1) * self.startPos[
                     i
                 ] + self.percent_1 * self._targetPos_1[i]
-                self.p_gains[i] = self.stand_kp
-                self.d_gains[i] = self.stand_kd
+                self.p_gains_[i] = self.stand_kp
+                self.d_gains_[i] = self.stand_kd
 
         elif (self.percent_1 == 1) and (self.percent_2 < 1):
             self.robot_node.logger.info("step into phase 2: move to targetPos2", once=True)
@@ -107,8 +107,8 @@ class StandAgent(BaseAgent):
                 self.robot_coordinates_action[i] = (1 - self.percent_2) * self._targetPos_1[
                     i
                 ] + self.percent_2 * self._targetPos_2[i]
-                self.p_gains[i] = self.stand_kp
-                self.d_gains[i] = self.stand_kd
+                self.p_gains_[i] = self.stand_kp
+                self.d_gains_[i] = self.stand_kd
 
         elif (self.percent_1 == 1) and (self.percent_2 == 1) and (self.percent_3 < 1):
             self.robot_node.logger.info("step into phase 3: keep targetPos2", once=True)
@@ -116,8 +116,8 @@ class StandAgent(BaseAgent):
             self.percent_3 = min(self.percent_3, 1)
             for i in range(self.robot_node.NUM_DOF):
                 self.robot_coordinates_action[i] = self._targetPos_2[i]
-                self.p_gains[i] = self.stand_kp
-                self.d_gains[i] = self.stand_kd
+                self.p_gains_[i] = self.stand_kp
+                self.d_gains_[i] = self.stand_kd
 
         elif (self.percent_1 == 1) and (self.percent_2 == 1) and (self.percent_3 == 1) and (self.percent_4 < 1):
             self.robot_node.logger.info("step into phase 4: move to defaultPos", once=True)
@@ -127,19 +127,18 @@ class StandAgent(BaseAgent):
                 self.robot_coordinates_action[i] = (1 - self.percent_4) * self._targetPos_2[
                     i
                 ] + self.percent_4 * self.final_dof_pos[i]
-                self.p_gains[i] = (1 - self.percent_4) * self.stand_kp + self.percent_4 * self.loco_kp
-                self.d_gains[i] = (1 - self.percent_4) * self.stand_kd + self.percent_4 * self.loco_kd
+                self.p_gains_[i] = (1 - self.percent_4) * self.stand_kp + self.percent_4 * self.loco_kp
+                self.d_gains_[i] = (1 - self.percent_4) * self.stand_kd + self.percent_4 * self.loco_kd
 
         else:
             self.robot_node.logger.info("step into phase 5: keep defaultPos", once=True)
             for i in range(self.robot_node.NUM_DOF):
                 self.robot_coordinates_action[i] = self.final_dof_pos[i]
-                self.p_gains[i] = self.loco_kp
-                self.d_gains[i] = self.loco_kd
+                self.p_gains_[i] = self.loco_kp
+                self.d_gains_[i] = self.loco_kd
 
         action = (self.robot_coordinates_action - self.final_dof_pos) / self.robot_node.action_scale
-        done = self.percent_4 == 1
-        return action, self.p_gains, self.d_gains, done
+        return action, self.p_gains_, self.d_gains_, self.done
 
     def sim_stand_up(self):
         self.stand_kp = 50.0
@@ -152,8 +151,8 @@ class StandAgent(BaseAgent):
                 self.robot_coordinates_action[i] = (
                     phase * self.stand_up_joint_pos[i] + (1 - phase) * self.stand_down_joint_pos[i]
                 )
-                self.p_gains[i] = phase * 50.0 + (1 - phase) * 20.0
-                self.d_gains[i] = 3.5
+                self.p_gains_[i] = phase * 50.0 + (1 - phase) * 20.0
+                self.d_gains_[i] = 3.5
         elif self.percent_4 < 1:
             self.robot_node.logger.info("step into phase 2", once=True)
             self.percent_4 += 1 / 400
@@ -162,17 +161,16 @@ class StandAgent(BaseAgent):
                 self.robot_coordinates_action[i] = (1 - self.percent_4) * self.stand_up_joint_pos[
                     i
                 ] + self.percent_4 * self.final_dof_pos[i]
-                self.p_gains[i] = (1 - self.percent_4) * self.stand_kp + self.percent_4 * self.loco_kp
-                self.d_gains[i] = (1 - self.percent_4) * self.stand_kd + self.percent_4 * self.loco_kd
+                self.p_gains_[i] = (1 - self.percent_4) * self.stand_kp + self.percent_4 * self.loco_kp
+                self.d_gains_[i] = (1 - self.percent_4) * self.stand_kd + self.percent_4 * self.loco_kd
         else:
             self.robot_node.logger.info("step into phase 3", once=True)
             for i in range(self.robot_node.NUM_DOF):
                 self.robot_coordinates_action[i] = self.final_dof_pos[i]
-                self.p_gains[i] = self.loco_kp
-                self.d_gains[i] = self.loco_kd
+                self.p_gains_[i] = self.loco_kp
+                self.d_gains_[i] = self.loco_kd
         action = (self.robot_coordinates_action - self.final_dof_pos) / self.robot_node.action_scale
-        done = self.percent_4 == 1.0
-        return action, self.p_gains, self.d_gains, done
+        return action, self.p_gains_, self.d_gains_, self.done
 
     def reset(self):
         self.robot_node.logger.reset()
@@ -181,3 +179,7 @@ class StandAgent(BaseAgent):
         self.percent_2 = 0.0
         self.percent_3 = 0.0
         self.percent_4 = 0.0
+
+    @property
+    def done(self):
+        return self.percent_4 == 1

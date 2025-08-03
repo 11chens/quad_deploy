@@ -1,9 +1,10 @@
 import os
+import time
 
 import numpy as np
 import onnxruntime as ort
 
-from agent.locomotion_agent import LocomotionAgent
+from agents.locomotion_agent import LocomotionAgent
 from robot_real import UnitreeGo2
 from utils.math_utils import CircularBuffer, transform_global_xy_to_robot_xy
 
@@ -20,17 +21,20 @@ class NavigationAgent(LocomotionAgent):
 
         self.obs_buf_nav = np.zeros(12, dtype=np.float32)
         self.obs_hist_nav = CircularBuffer(10)
+        self.lidar = self.robot_node.ros_manager.lidar_node
 
         self.sigma = sigma
         self._actor_input_nav = np.zeros(77, dtype=np.float32)
         self.goal_world = np.array(goal_world, dtype=np.float32)
-        self.ros_node = robot_node.ros_node
-        self.timestamp = 0
 
-        self.load_model()
+        self.robot_node.logger.info("Waiting for high state message")
+        while not (hasattr(self.lidar, "pose_") and hasattr(self.lidar, "rays_")):
+            time.sleep(0.1)
+        self.robot_node.logger.info("High state message received, the navigation agent is ready!")
 
-    def load_model(self):
-        super().load_model()
+        self.load_model_nav()
+
+    def load_model_nav(self):
         models = ["policy", "encoder_prop", "encoder_rays"]
         self.ort_sessions = {}
         for name in models:
@@ -43,11 +47,9 @@ class NavigationAgent(LocomotionAgent):
         self.encoder_rays_nav = self.ort_sessions["encoder_rays"]
 
     def get_observation_nav(self):
-        self.goal_base = transform_global_xy_to_robot_xy(
-            self.goal_world, self.robot_node.ros_node.lidar_node.pose_[:2], self.robot_node.ros_node.lidar_node.pose_[2]
-        )
+        self.goal_base = transform_global_xy_to_robot_xy(self.goal_world, self.robot_pos, self.robot_yaw)
         self.obs_buf_nav[:3] = self.robot_node.projected_gravity
-        self.obs_buf_nav[3:6] = self.commands * self.commands_scale
+        self.obs_buf_nav[3:6] = self.pre_commands * self.commands_scale
         self.obs_buf_nav[6:9] = self.base_lin_vel * self.obs_scale.lin_vel
         self.obs_buf_nav[9:12] = self.robot_node.base_ang_vel * self.obs_scale.ang_vel
         self.obs_hist_nav.append(self.obs_buf_nav)
@@ -57,7 +59,7 @@ class NavigationAgent(LocomotionAgent):
             None, {self.encoder_prop_nav.get_inputs()[0].name: self.obs_hist_nav.buffer.reshape(-1)}
         )[0]
         latent_rays = self.encoder_rays_nav.run(
-            None, {self.encoder_rays_nav.get_inputs()[0].name: self.rays_hist.buffer.reshape(-1)}
+            None, {self.encoder_rays_nav.get_inputs()[0].name: self.rays_hist.reshape(-1)}
         )[0]
 
         self._actor_input_nav[:12] = self.obs_buf_nav
@@ -76,9 +78,7 @@ class NavigationAgent(LocomotionAgent):
         self.post_commands()
         self.get_observation()
         action = self.infer_loco()
-        done = np.linalg.norm(self.goal_base) < self.sigma
-        self.timestamp += 1
-        if self.timestamp % 100 == 0:
+        if (self.robot_node.timestamp) % 100 == 0:
             self.robot_node.logger.debug(
                 f"Goal in Base: ({self.goal_base[0].item():.2f}, {self.goal_base[1].item():.2f})"
             )
@@ -86,25 +86,28 @@ class NavigationAgent(LocomotionAgent):
                 f"Base Pose: ({self.robot_pos[0].item():.2f}, {self.robot_pos[1].item():.2f},"
                 f" {self.robot_yaw.item():.2f})"
             )
-
-        return action, None, None, done
+        return action, None, None, self.done
 
     def reset(self):
-        self.rays_hist.reset()
         self.obs_hist_nav.reset()
+        self.lidar.rays_hist_.reset()
 
     @property
     def robot_pos(self):
-        return self.robot_node.ros_node.lidar_node.pose_[:2]
+        return self.lidar.pose_[:2]
 
     @property
     def robot_yaw(self):
-        return self.robot_node.ros_node.lidar_node.pose_[2:]
+        return self.lidar.pose_[2]
 
     @property
     def rays_hist(self):
-        return self.robot_node.ros_node.lidar_node.rays_hist_
+        return np.log2(np.clip(self.lidar.rays_hist_.buffer, 0.1, 5.0))
 
     @property
     def rays(self):
-        return self.robot_node.ros_node.lidar_node.rays_
+        return np.log2(np.clip(self.lidar.rays_, 0.1, 5.0))
+
+    @property
+    def done(self):
+        return np.linalg.norm(self.goal_base) < self.sigma
