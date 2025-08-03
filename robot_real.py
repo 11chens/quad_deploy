@@ -9,11 +9,7 @@ from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_, LowState_
 from unitree_sdk2py.utils.crc import CRC
 
 from robot_cfgs import RobotCfgs
-from utils.math_utils import (
-    VectorLPFilter,
-    quat_rotate_inverse,
-    quat_rotate_inverse_ori,
-)
+from utils.math_utils import VectorLPFilter, quat_rotate_inverse
 
 if os.uname().machine in ["x86_64", "amd64"]:
     sys.path.append(

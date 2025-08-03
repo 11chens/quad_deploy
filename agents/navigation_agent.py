@@ -78,7 +78,7 @@ class NavigationAgent(LocomotionAgent):
         self.post_commands()
         self.get_observation()
         action = self.infer_loco()
-        if (self.robot_node.timestamp) % 100 == 0:
+        if (self.robot_node.timestamp) % 200 == 0:
             self.robot_node.logger.debug(
                 f"Goal in Base: ({self.goal_base[0].item():.2f}, {self.goal_base[1].item():.2f})"
             )

@@ -24,7 +24,6 @@ class LocomotionAgent(BaseAgent):
         self.obs_buf = np.zeros(45, dtype=np.float32)
         self.obs_hist = CircularBuffer(10)
         self._actor_input = np.zeros(450, dtype=np.float32)
-        # self._actor_input = np.zeros(48, dtype=np.float32)
         self.base_lin_vel = np.zeros(3, dtype=np.float32)
 
         self.smooth_factor_loco = np.array(smooth_factor_loco, dtype=np.float32)
@@ -73,14 +72,14 @@ class LocomotionAgent(BaseAgent):
         self._actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
         actions, vel_pred = self.policy_loco.run(self.output_names, {self.input_name: self._actor_input})
         actions = actions[0]
-        self.base_lin_vel = vel_pred[0] * 0.5  # scale
+        self.base_lin_vel[:2] = vel_pred[0] * 0.5  # scale
         return actions
 
     def step(self):
         self.joystick_to_commands()
         self.get_observation()
         action = self.infer_loco()
-        if (self.robot_node.timestamp) % 100 == 0:
+        if (self.robot_node.timestamp) % 200 == 0:
             self.robot_node.logger.debug(
                 f"Cx: {self.commands[0]:.2f}, Cy: {self.commands[1]:.2f}, Cyaw: {self.commands[2]:.2f} "
             )

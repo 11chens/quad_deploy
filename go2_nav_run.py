@@ -172,7 +172,7 @@ def main(args=None):
 
     go2_nav_node.start_handlers()
     go2_nav_node.agent_warm_up("loco")
-    go2_nav_node.agent_warm_up("nav")
+    # go2_nav_node.agent_warm_up("nav")
 
     # input("Press enter to start")
 
@@ -187,7 +187,7 @@ def main(args=None):
         go2_nav_node.timestamp += 1
         if go2_nav_node.timestamp % 100 == 0:
             frequency = go2_nav_node.timestamp / (time.perf_counter() - global_start_time)
-            # go2_nav_node.logger.debug(f"frequency: {frequency:.2f} Hz")
+            go2_nav_node.logger.debug(f"frequency: {frequency:.2f} Hz")
 
 
 if __name__ == "__main__":
@@ -197,7 +197,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--debug", action="store_true", help="Enable debug mode.")
     parser.add_argument(
-        "--nodryrun", action="store_true", help="Disable dry run mode."
+        "--nodryrun", action="store_true", default=False, help="Disable dry run mode."
     )  # default: False, --nodryrun:True
     parser.add_argument(
         "--logdir",
@@ -205,7 +205,9 @@ if __name__ == "__main__":
         default="example/quad_deploy/models/onnx_models",
         help="Common directory for user's data (absolute path).",
     )
-    parser.add_argument("--nosimrun", action="store_true", help="Enable simulation.")  # default: False, --nosimrun:True
+    parser.add_argument(
+        "--nosimrun", action="store_true", default=False, help="Enable simulation."
+    )  # default: False, --nosimrun:True
     parser.add_argument(
         "--navrun", action="store_true", help="Enable navigation agent."
     )  # default: False, --navrun:True
