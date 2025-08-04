@@ -16,9 +16,9 @@ class LocomotionAgent(BaseAgent):
         robot_node: UnitreeGo2,
         smooth_factor_loco=[0.1, 0.1, 0.1],
         smooth_factor_stop=[0.3, 0.3, 0.3],
-        min_cmds=[-0.5, -0.8, -1.25],
-        max_cmds=[1.5, 0.8, 1.25],
-        dead_zone=0.1,
+        min_cmds=[-0.5, -0.8, -1.0],
+        max_cmds=[1.5, 0.8, 1.0],
+        dead_zone=0.2,
     ):
         super().__init__(logdir, robot_node)
         self.obs_buf = np.zeros(45, dtype=np.float32)

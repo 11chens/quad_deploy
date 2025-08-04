@@ -3,11 +3,7 @@ import threading
 import time
 
 import numpy as np
-from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import (
-    MotionSwitcherClient,
-)
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-from unitree_sdk2py.go2.sport.sport_client import SportClient
 
 from agents.base import BaseAgent
 from agents.locomotion_agent import LocomotionAgent
@@ -59,22 +55,6 @@ class Go2NavRun(UnitreeGo2):
             self.logger.info(f"Successfully registered {agent_name} agent")
         except Exception as e:
             self.logger.error(f"Failed to create/register agent for {agent_name}: {str(e)}")
-
-    def init_client(self):
-        self.sc = SportClient()
-        self.sc.SetTimeout(5.0)
-        self.sc.Init()
-
-        self.msc = MotionSwitcherClient()
-        self.msc.SetTimeout(5.0)
-        self.msc.Init()
-
-        status, result = self.msc.CheckMode()
-        while result["name"]:
-            self.sc.StandDown()
-            self.msc.ReleaseMode()
-            status, result = self.msc.CheckMode()
-            time.sleep(1)
 
     def start_handlers(self, start_agent: str = "stand"):
         super().start_handlers()
