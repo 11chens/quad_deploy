@@ -56,11 +56,10 @@ class LocomotionAgent(BaseAgent):
         """Extract from the buffers and build the 1d observation tensor
         Each get ... obs function does not do the obs_scale multiplication.
         """
-
-        # self.obs_buf[:3] = self.robot_node.base_ang_vel_filter * self.obs_scale.ang_vel
         self.obs_buf[:3] = self.robot_node.base_ang_vel * self.obs_scale.ang_vel
         self.obs_buf[3:6] = self.robot_node.projected_gravity
-        self.obs_buf[6:9] = self.commands * self.commands_scale
+        self.obs_buf[6:9] = self.commands
+        # self.obs_buf[6:9] = self.commands * self.commands_scale
         self.obs_buf[9:21] = self.robot_node.dof_pos_rel * self.obs_scale.dof_pos
         self.obs_buf[21:33] = self.robot_node.dof_vel * self.obs_scale.dof_vel
         self.obs_buf[33:45] = self.robot_node.last_action
@@ -72,7 +71,7 @@ class LocomotionAgent(BaseAgent):
         self._actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
         actions, vel_pred = self.policy_loco.run(self.output_names, {self.input_name: self._actor_input})
         actions = actions[0]
-        self.base_lin_vel[:2] = vel_pred[0] * 0.5  # scale
+        self.base_lin_vel[:2] = vel_pred[0]  # scale
         return actions
 
     def step(self):
