@@ -15,7 +15,7 @@ class LocomotionAgent(BaseAgent):
         logdir: str,
         robot_node: UnitreeGo2,
         smooth_factor_loco=[0.1, 0.1, 0.1],
-        smooth_factor_stop=[0.3, 0.3, 0.3],
+        smooth_factor_stop=[0.1, 0.3, 0.3],
         min_cmds=[-0.5, -0.8, -1.0],
         max_cmds=[1.5, 0.8, 1.0],
         dead_zone=0.2,
@@ -58,8 +58,7 @@ class LocomotionAgent(BaseAgent):
         """
         self.obs_buf[:3] = self.robot_node.base_ang_vel * self.obs_scale.ang_vel
         self.obs_buf[3:6] = self.robot_node.projected_gravity
-        self.obs_buf[6:9] = self.commands
-        # self.obs_buf[6:9] = self.commands * self.commands_scale
+        self.obs_buf[6:9] = self.commands * self.commands_scale
         self.obs_buf[9:21] = self.robot_node.dof_pos_rel * self.obs_scale.dof_pos
         self.obs_buf[21:33] = self.robot_node.dof_vel * self.obs_scale.dof_vel
         self.obs_buf[33:45] = self.robot_node.last_action
@@ -71,7 +70,7 @@ class LocomotionAgent(BaseAgent):
         self._actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
         actions, vel_pred = self.policy_loco.run(self.output_names, {self.input_name: self._actor_input})
         actions = actions[0]
-        self.base_lin_vel[:2] = vel_pred[0]  # scale
+        self.base_lin_vel[:2] = vel_pred[0] * 0.5  # scale
         return actions
 
     def step(self):

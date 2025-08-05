@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+    {
+        "name": "Python: Attach to Onboard (Port 7890)",
+        "type": "debugpy",
+        "request": "attach",
+        "connect": {
+            "host": "localhost",
+            "port": 7890
+        },
+        "pathMappings": [
+            {
+                "localRoot": ".",
+                "remoteRoot": "."
+            }
+        ]
+    }
+]
+}
