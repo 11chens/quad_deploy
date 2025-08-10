@@ -33,11 +33,22 @@ class LocomotionAgent(BaseAgent):
         self.dead_zone = dead_zone
         self.load_model()
 
+    # def load_model(self):
+    #     onnx_path = os.path.join(self.logdir, "locomotion_model", "model.onnx")
+    #     self.policy_loco = ort.InferenceSession(onnx_path)
+    #     self.output_names = [output.name for output in self.policy_loco.get_outputs()]
+    #     self.input_name = self.policy_loco.get_inputs()[0].name
+
     def load_model(self):
-        onnx_path = os.path.join(self.logdir, "locomotion_model", "model.onnx")
-        self.policy_loco = ort.InferenceSession(onnx_path)
-        self.output_names = [output.name for output in self.policy_loco.get_outputs()]
-        self.input_name = self.policy_loco.get_inputs()[0].name
+        onnx_path = os.path.join(self.logdir, "locomotion_model", "actor.onnx")
+        self.actor = ort.InferenceSession(onnx_path)
+        self.output_names = [output.name for output in self.actor.get_outputs()]
+        self.input_name = self.actor.get_inputs()[0].name
+
+        onnx_path = os.path.join(self.logdir, "locomotion_model", "estimator.onnx")
+        self.estimator = ort.InferenceSession(onnx_path)
+        self.output_names = [output.name for output in self.estimator.get_outputs()]
+        self.input_name = self.estimator.get_inputs()[0].name
 
     def joystick_to_commands(self):
         self.pre_commands[0] = self.robot_node.joystick.cmd_vx * self.max_cmds[0]
@@ -66,9 +77,20 @@ class LocomotionAgent(BaseAgent):
             self.robot_node.logger.error("obs has nan")
         self.obs_hist.append(self.obs_buf)
 
+    # def infer_loco(self):
+    #     self._actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
+    #     actions, vel_pred = self.policy_loco.run(self.output_names, {self.input_name: self._actor_input})
+    #     actions = actions[0]
+    #     self.base_lin_vel[:2] = vel_pred[0] * 0.5  # scale
+    #     return actions
+
     def infer_loco(self):
         self._actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
-        actions, vel_pred = self.policy_loco.run(self.output_names, {self.input_name: self._actor_input})
+        vel_pred = self.estimator.run(self.output_names, {self.input_name: self._actor_input})[0]
+        prop = self._actor_input[:, -45:]
+        v_yaw = prop[:, 2:3]
+        actor_obs = np.concatenate((vel_pred, prop, v_yaw), axis=-1)  # (num_envs, 48)
+        actions = self.actor.run(self.output_names, {self.input_name: actor_obs})[0]
         actions = actions[0]
         self.base_lin_vel[:2] = vel_pred[0] * 0.5  # scale
         return actions
