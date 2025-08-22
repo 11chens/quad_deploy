@@ -1,72 +1,47 @@
 import numpy as np
 
-from agents.base import BaseAgent
-from robot_real import UnitreeGo2
+from agents.base_agent import BaseAgent
+from config.stand_agent_cfg import StandAgentCfg
+from nodes.robot_node import UnitreeGo2
 
 
 class StandAgent(BaseAgent):
     def __init__(self, logdir: None, robot_node: UnitreeGo2):
         super().__init__(logdir, robot_node)
 
-        self.startPos = [0.0] * self.robot_node.NUM_DOF
+        self.startPos = StandAgentCfg.startPos
 
         # Target positions for standing up
-        self._targetPos_1 = [0.0, 1.36, -2.65, 0.0, 1.36, -2.65, -0.2, 1.36, -2.65, 0.2, 1.36, -2.65]
-        self._targetPos_2 = [0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3]
+        self._targetPos_1 = StandAgentCfg.targetPos_1
+        self._targetPos_2 = StandAgentCfg.targetPos_2
 
         self.stand_up_joint_pos = np.array(
-            [
-                0.00571868,
-                0.608813,
-                -1.21763,
-                -0.00571868,
-                0.608813,
-                -1.21763,
-                0.00571868,
-                0.608813,
-                -1.21763,
-                -0.00571868,
-                0.608813,
-                -1.21763,
-            ],
+            StandAgentCfg.stand_up_joint_pos,
             dtype=np.float32,
         )
-
         self.stand_down_joint_pos = np.array(
-            [
-                0.0473455,
-                1.22187,
-                -2.44375,
-                -0.0473455,
-                1.22187,
-                -2.44375,
-                0.0473455,
-                1.22187,
-                -2.44375,
-                -0.0473455,
-                1.22187,
-                -2.44375,
-            ],
+            StandAgentCfg.stand_down_joint_pos,
             dtype=np.float32,
         )
 
         # Duration for each phase of standing up
-        self.duration_1 = 50  # 500 125
-        self.duration_2 = 50  # 500 125
-        self.duration_3 = 100  # 200
-        self.duration_4 = 100  # 200
+        self.duration_1 = StandAgentCfg.duration_1
+        self.duration_2 = StandAgentCfg.duration_2
+        self.duration_3 = StandAgentCfg.duration_3
+        self.duration_4 = StandAgentCfg.duration_4
 
-        self.firstRun = True
+        # Standing parameters
+        self.stand_kp = StandAgentCfg.stand_kp
+        self.stand_kd = StandAgentCfg.stand_kd
+
         # Percentages for each phase
         self.percent_1 = 0.0
         self.percent_2 = 0.0
         self.percent_3 = 0.0
         self.percent_4 = 0.0
-
-        # Standing parameters
-        self.stand_kp = 60.0
-        self.stand_kd = 5.0
         self.running_time = 0.0
+        self.firstRun = True
+
         # NOTE: Dont assign values directly to avoid modifying the ground truth of robot
         self.loco_kp = self.robot_node.stiffness["joint"]
         self.loco_kd = self.robot_node.damping["joint"]

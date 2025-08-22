@@ -12,6 +12,8 @@ class CircularBuffer:
 
     def append(self, value: float):
         """Append a value to the buffer, if the buffer is full, the oldest value will be removed."""
+        if self._length == 0:
+            return
         if self._buffer is None:
             self._buffer = np.zeros((self._length,) + tuple(value.shape), dtype=np.float32)
         if self._num_pushes == 0:

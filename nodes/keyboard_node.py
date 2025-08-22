@@ -2,9 +2,9 @@ from keyboard_msgs.msg import Key
 
 
 class KeyboardSubscriber:
-    def __init__(self, ros_mangager=None):
+    def __init__(self, ros_manager=None):
         self._init_keys()
-        self.keydown_sub = ros_mangager.create_subscription(Key, "/keydown", self._keydown_callback, 1)
+        self.keydown_sub = ros_manager.create_subscription(Key, "/keydown", self._keydown_callback, 1)
 
     def _init_keys(self):
         self.S = False
