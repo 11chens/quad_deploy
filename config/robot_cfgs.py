@@ -1,7 +1,9 @@
 import numpy as np
 
 
-class RobotCfgs:
+class RobotCfg:
+    """Configuration for the Unitree Go2 robot."""
+
     class Go2:
         HIGHLEVEL = 0xEE
         LOWLEVEL = 0xFF
@@ -110,12 +112,3 @@ class RobotCfgs:
         damping = {"joint": 0.75}  # [N*m*s/rad]
         action_scale = 0.25
         computer_clip_torque = True
-
-    class AgentCfg:
-        num_commands = 3
-
-        class obs_scale:
-            lin_vel = 2.0
-            ang_vel = 0.25
-            dof_pos = 1.0
-            dof_vel = 0.05

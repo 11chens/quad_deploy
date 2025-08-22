@@ -12,7 +12,7 @@ from unitree_sdk2py.idl.default import unitree_go_msg_dds__LowCmd_
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_, LowState_
 from unitree_sdk2py.utils.crc import CRC
 
-from robot_cfgs import RobotCfgs
+from config.robot_cfgs import RobotCfg
 from utils.math_utils import VectorLPFilter, quat_rotate_inverse
 
 if os.uname().machine in ["x86_64", "amd64"]:
@@ -47,15 +47,15 @@ class UnitreeGo2:
         low_cmd_topic="rt/lowcmd",
     ):
         self.robot_class_name = robot_class_name
-        self.NUM_DOF = getattr(RobotCfgs, self.robot_class_name).NUM_DOF
-        self.NUM_ACTIONS = getattr(RobotCfgs, self.robot_class_name).NUM_ACTIONS
-        self.dof_names = getattr(RobotCfgs, self.robot_class_name).dof_names
-        self.dof_map = getattr(RobotCfgs, self.robot_class_name).dof_map
-        self.default_joint_angles = getattr(RobotCfgs, self.robot_class_name).default_joint_angles
-        self.stiffness = getattr(RobotCfgs, self.robot_class_name).stiffness
-        self.damping = getattr(RobotCfgs, self.robot_class_name).damping
-        self.action_scale = getattr(RobotCfgs, self.robot_class_name).action_scale
-        self.computer_clip_torque = getattr(RobotCfgs, self.robot_class_name).computer_clip_torque
+        self.NUM_DOF = getattr(RobotCfg, self.robot_class_name).NUM_DOF
+        self.NUM_ACTIONS = getattr(RobotCfg, self.robot_class_name).NUM_ACTIONS
+        self.dof_names = getattr(RobotCfg, self.robot_class_name).dof_names
+        self.dof_map = getattr(RobotCfg, self.robot_class_name).dof_map
+        self.default_joint_angles = getattr(RobotCfg, self.robot_class_name).default_joint_angles
+        self.stiffness = getattr(RobotCfg, self.robot_class_name).stiffness
+        self.damping = getattr(RobotCfg, self.robot_class_name).damping
+        self.action_scale = getattr(RobotCfg, self.robot_class_name).action_scale
+        self.computer_clip_torque = getattr(RobotCfg, self.robot_class_name).computer_clip_torque
 
         self.dry_run = dry_run
         self.safe_check = safe_check
@@ -73,7 +73,7 @@ class UnitreeGo2:
         self.up_axis_idx = 2  # 2 for z, 1 for y -> adapt gravity accordingly
         self.gravity_vec = np.zeros(3)
         self.gravity_vec[self.up_axis_idx] = -1
-        self.torque_limits = getattr(RobotCfgs, self.robot_class_name).torque_limits
+        self.torque_limits = getattr(RobotCfg, self.robot_class_name).torque_limits
 
         self.p_gains = []
         for i in range(self.NUM_DOF):
@@ -99,8 +99,8 @@ class UnitreeGo2:
         self.p_gains = np.array(self.p_gains, dtype=np.float32)
         self.d_gains = np.array(self.d_gains, dtype=np.float32)
 
-        self.joint_limits_high = getattr(RobotCfgs, self.robot_class_name).joint_limits_high
-        self.joint_limits_low = getattr(RobotCfgs, self.robot_class_name).joint_limits_low
+        self.joint_limits_high = getattr(RobotCfg, self.robot_class_name).joint_limits_high
+        self.joint_limits_low = getattr(RobotCfg, self.robot_class_name).joint_limits_low
         joint_pos_mid = (self.joint_limits_high + self.joint_limits_low) / 2
         joint_pos_range = (self.joint_limits_high - self.joint_limits_low) / 2
         self.joint_pos_protect_high = joint_pos_mid + joint_pos_range * self.dof_pos__protect_ratio
@@ -129,6 +129,8 @@ class UnitreeGo2:
         self.low_cmd = unitree_go_msg_dds__LowCmd_()
         self.low_cmd_pub = ChannelPublisher(self.low_cmd_topic, LowCmd_)
         self.low_cmd_pub.Init()
+        self.init_motors()
+        self.init_client()
 
     def reindex(self, sim_data):
         temp_sim_data = sim_data.copy()
@@ -179,6 +181,13 @@ class UnitreeGo2:
         )
         self.ang_vel_filter_.update(base_ang_vel_raw)
         return self.ang_vel_filter_.get_values()
+
+    @property
+    def base_euler(self):
+        return np.array(
+            self.low_state.imu_state.rpy,
+            dtype=np.float32,
+        )
 
     @property
     def projected_gravity(self):
@@ -263,9 +272,9 @@ class UnitreeGo2:
         self.low_cmd.gpio = 0
         for i in range(20):
             self.low_cmd.motor_cmd[i].mode = 0x01  # (PMSM) mode
-            self.low_cmd.motor_cmd[i].q = getattr(RobotCfgs, self.robot_class_name).PosStopF
+            self.low_cmd.motor_cmd[i].q = getattr(RobotCfg, self.robot_class_name).PosStopF
             self.low_cmd.motor_cmd[i].kp = 0
-            self.low_cmd.motor_cmd[i].dq = getattr(RobotCfgs, self.robot_class_name).VelStopF
+            self.low_cmd.motor_cmd[i].dq = getattr(RobotCfg, self.robot_class_name).VelStopF
             self.low_cmd.motor_cmd[i].kd = 0
             self.low_cmd.motor_cmd[i].tau = 0
         self.low_cmd.crc = self.crc.Crc(self.low_cmd)
@@ -284,6 +293,9 @@ class UnitreeGo2:
         self.low_cmd_pub.Write(self.low_cmd)
 
     def init_client(self):
+        """Close Unitree sport client, prepare for RL control"""
+        if self.sim_run:
+            return
         self.sc = SportClient()
         self.sc.SetTimeout(5.0)
         self.sc.Init()

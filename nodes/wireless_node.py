@@ -36,6 +36,7 @@ class Go2JoystickSubscriber:
         self.cmd_vx = msg.ly
         self.cmd_vy = -msg.lx
         self.cmd_vyaw = -msg.rx
+        self.cmd_pitch = -msg.ry
         self.L2 = msg.keys & self.WirelessButtons.L2
         self.L1 = msg.keys & self.WirelessButtons.L1
         self.R2 = msg.keys & self.WirelessButtons.R2
@@ -63,6 +64,7 @@ class Go2JoystickSubscriber:
         self.cmd_vx = 0
         self.cmd_vy = 0
         self.cmd_vyaw = 0
+        self.cmd_pitch = 0
 
     def reset(self):
         self._init_keys()

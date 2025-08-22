@@ -5,12 +5,12 @@ import time
 import numpy as np
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-from agents.base import BaseAgent
-from agents.locomotion_agent import LocomotionAgent
-from agents.navigation_agent import NavigationAgent
+from agents.base_agent import BaseAgent
+from agents.loco_agent import LocoAgent
+from agents.nav_agent import NavAgent
 from agents.stand_agent import StandAgent
+from nodes.robot_node import UnitreeGo2
 from nodes.wireless_node import Go2JoystickSubscriber
-from robot_real import UnitreeGo2
 
 
 class Go2NavRun(UnitreeGo2):
@@ -35,7 +35,7 @@ class Go2NavRun(UnitreeGo2):
             ros_thread.start()
 
         if self.navrun:
-            self.agents_dict["nav"] = NavigationAgent
+            self.agents_dict["nav"] = NavAgent
 
     def register_agent(self, name: str, agent: BaseAgent):
         """Register the agent to the robot node.
@@ -135,7 +135,7 @@ class Go2NavRun(UnitreeGo2):
 def main(args=None):
     agents_dict = {
         "stand": StandAgent,
-        "loco": LocomotionAgent,
+        "loco": LocoAgent,
     }
     go2_nav_node = Go2NavRun(
         simrun=not args.nosimrun,

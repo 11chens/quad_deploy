@@ -4,16 +4,18 @@ import time
 import numpy as np
 import onnxruntime as ort
 
-from agents.base import BaseAgent
-from robot_real import UnitreeGo2
+from agents.base_agent import BaseAgent
+from nodes.robot_node import UnitreeGo2
 from utils.math_utils import CircularBuffer
 
 
-class LocomotionAgent(BaseAgent):
+class LocoAgent(BaseAgent):
     def __init__(
         self,
         logdir: str,
         robot_node: UnitreeGo2,
+        num_props=45,
+        len_history=10,
         smooth_factor_loco=[0.1, 0.1, 0.1],
         smooth_factor_stop=[0.1, 0.3, 0.3],
         min_cmds=[-0.5, -0.8, -1.0],
@@ -21,10 +23,10 @@ class LocomotionAgent(BaseAgent):
         dead_zone=0.2,
     ):
         super().__init__(logdir, robot_node)
-        self.obs_buf = np.zeros(45, dtype=np.float32)
-        self.obs_hist = CircularBuffer(10)
-        self._actor_input = np.zeros(450, dtype=np.float32)
+        self.obs_buf = np.zeros(num_props, dtype=np.float32)
+        self.obs_hist = CircularBuffer(len_history)
         self.base_lin_vel = np.zeros(3, dtype=np.float32)
+        self._actor_input = np.zeros(num_props * len_history, dtype=np.float32)
 
         self.smooth_factor_loco = np.array(smooth_factor_loco, dtype=np.float32)
         self.smooth_factor_stop = np.array(smooth_factor_stop, dtype=np.float32)
