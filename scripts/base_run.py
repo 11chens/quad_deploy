@@ -7,7 +7,6 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from agents.loco_agent import LocoAgent
 from agents.stand_agent import StandAgent
-from nodes.keyboard_node import KeyboardSubscriber
 from nodes.robot_node import UnitreeGo2
 from nodes.wireless_node import Go2JoystickSubscriber
 
@@ -71,7 +70,12 @@ class BaseRun(UnitreeGo2):
 
     def start_handlers(self, start_agent: str = "stand"):
         super().start_handlers()
-        self.joystick = Go2JoystickSubscriber() if not hasattr(self, "ros_manager") else self.nodes["key"]
+        if not self.sim_run:
+            self.joystick = Go2JoystickSubscriber()
+        else:
+            from nodes.keyboard_node import KeyboardSubscriber
+
+            self.joystick = KeyboardSubscriber(ros_manager=self.ros_manager)
         self.curr_agent = self.agents[start_agent]
         self.curr_agent.reset()
 
@@ -137,9 +141,7 @@ def main(args=None):
         "stand": StandAgent,
         "loco": LocoAgent,
     }
-    nodes_dict = {
-        "key": KeyboardSubscriber,
-    }
+    nodes_dict = {}
 
     go2_base_node = BaseRun(
         log_dir=args.logdir,

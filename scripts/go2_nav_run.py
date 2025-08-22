@@ -8,7 +8,6 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from agents.loco_agent import LocoAgent
 from agents.nav_agent import NavAgent
 from agents.stand_agent import StandAgent
-from nodes.keyboard_node import KeyboardSubscriber
 from nodes.lidar_node import LidarSubscriber
 
 
@@ -47,9 +46,9 @@ def main(args=None):
         "nav": NavAgent,
     }
     nodes_dict = {
-        "key": KeyboardSubscriber,
         "lidar": LidarSubscriber,
     }
+
     go2_nav_node = Go2NavRun(
         log_dir=args.logdir,
         sim_run=not args.nosimrun,
