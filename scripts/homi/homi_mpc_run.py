@@ -5,43 +5,42 @@ import time
 import numpy as np
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-from agents.loco_agent import LocoAgent
-from agents.stand_agent import StandAgent
-from nodes.robot_node import UnitreeGo2
+from agents.homi.homi_nav_agent import HomiNavAgent
+from agents.homi.homi_turn_agent import HomiTurnAgent
+from nodes.homi.mpc_node import UnitreeGo2MPC
+from nodes.homi.vlm_node import VLMSubscriber
 from nodes.wireless_node import Go2JoystickSubscriber
 
 
-class BaseRun(UnitreeGo2):
-    def __init__(
-        self,
-        log_dir=None,
-        sim_run=True,
-        startupros=True,
-        agents_dict={},
-        nodes_dict={},
-        num_warm_iter=50,
-        dt=0.005,
-        *args,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-        self.log_dir = log_dir
-        self.sim_run = sim_run
-        self.startupros = startupros
+class HomiMPCRun(UnitreeGo2MPC):
+    def __init__(self, agents_dict={}, nodes_dict={}, sensors_dict={}, num_warm_iter=50, dt=0.005):
+        super().__init__()
         self.agents_dict = agents_dict
         self.nodes_dict = nodes_dict
+        self.sensors_dict = sensors_dict
         self.num_warm_iter = num_warm_iter
         self.dt = dt
         self.agents = {}
+        self.sensors = {}
         self.nodes = {}
         self.timestamp = 0
         self.curr_agent = None
         self.EMERGENCY = False
+        self.startupros = True
+        self.log_dir = None
+        self.sim_run = False
+        self.action, self.p_gains, self.d_gains = None, None, None
 
         self.register_node()
         self.register_agent()
+        self.register_sensor()
 
-        self.start_handlers()
+        self.start_handlers(start_agent="homi_turn")
+
+        self.logger.info("Waiting for VLM message")
+        while not (hasattr(self.nodes["vlm"], "P_img")):
+            time.sleep(0.1)
+        self.logger.info("VLM message received, the robot is ready!")
 
         for agent_name, agent_class in self.agents_dict.items():
             self.agent_warm_up(agent_name)
@@ -68,10 +67,14 @@ class BaseRun(UnitreeGo2):
             self.agents[agent_name] = agent_class(logdir=self.log_dir, robot_node=self)
             self.logger.info(f"Successfully registered {agent_name} agent")
 
+    def register_sensor(self):
+        for sensor_name, sensor_class in self.sensors_dict.items():
+            self.sensors[sensor_name] = sensor_class()
+            self.logger.info(f"Successfully registered {sensor_name} sensor")
+
     def start_handlers(self, start_agent: str = "stand"):
-        super().start_handlers()
         if not self.sim_run:
-            self.joystick = Go2JoystickSubscriber()
+            self.joystick = self.sensors["joystick"]
         else:
             from nodes.keyboard_node import KeyboardSubscriber
 
@@ -87,35 +90,34 @@ class BaseRun(UnitreeGo2):
         self.logger.debug(f"[{agent_name}] Infer delay: {delay*1e3:.3f} ms")
 
     def get_agent_switch(self, done: bool) -> str | None:
-        """Determine if we need to switch to a different agent based on the done flag and Joystick.
+        """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
         """
-        if self.curr_agent is self.agents["stand"] and done:
-            self.logger.log_throttle("Current stand agent returns done, waiting for press [X] to switch", 5)
-            if self.joystick.X:
-                return "loco"
+        if self.curr_agent is self.agents["homi_turn"] and done:
+            if self.nodes["vlm"].start:
+                return "homi_nav"
             return None
 
+        if self.curr_agent is self.agents["homi_nav"] and self.grasp_done:
+            return "homi_turn"
         return None
+
+    # ---- user's custom function --- #
 
     def emergency_handle(self):
         if self.joystick.L2 and not self.EMERGENCY:
             self.EMERGENCY = True
-            self.turn_off_motors()
             self.logger.warning("L2 is pressed, The motors shuts down.")
 
         if self.joystick.L1 and self.EMERGENCY:
             self.EMERGENCY = False
             self.logger.info("L1 is pressed, robot will recovery.")
-            self.curr_agent = self.agents["stand"]
-            self.curr_agent.reset()
-            self.timestamp = 0
-            self.init_motors()
 
     def main_loop(self) -> None:
         """Main loop that runs the state machine to control the robot."""
         loop_start_time = time.perf_counter()
         self.emergency_handle()
+        self.grasp_handle(self.nodes["vlm"].grasp)
         if not self.EMERGENCY:  # 200 Hz
             if self.timestamp % 4 == 0:  # 50 Hz
                 action, p_gains, d_gains, done = self.curr_agent.step()
@@ -137,18 +139,20 @@ class BaseRun(UnitreeGo2):
 
 def main(args=None):
     agents_dict = {
-        "stand": StandAgent,
-        "loco": LocoAgent,
+        "homi_nav": HomiNavAgent,
+        "homi_turn": HomiTurnAgent,
     }
-    nodes_dict = {}
+    nodes_dict = {
+        "vlm": VLMSubscriber,
+    }
+    sensors_dict = {
+        "joystick": Go2JoystickSubscriber,
+    }
 
-    go2_base_node = BaseRun(
-        log_dir=args.logdir,
-        sim_run=not args.nosimrun,
-        startupros=not args.nosimrun,
+    go2_base_node = HomiMPCRun(
         agents_dict=agents_dict,
         nodes_dict=nodes_dict,
-        dry_run=not args.nodryrun,
+        sensors_dict=sensors_dict,
     )
     global_start_time = time.perf_counter()
 
@@ -165,18 +169,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the Go2 robot.")
 
     parser.add_argument("--debug", action="store_true", help="Enable debug mode.")
-    parser.add_argument(
-        "--nodryrun", action="store_true", default=False, help="Disable dry run mode."
-    )  # default: False, --nodryrun:True
-    parser.add_argument(
-        "--logdir",
-        type=str,
-        default="models/onnx_models",
-        help="Common directory for user's data (absolute path).",
-    )
-    parser.add_argument(
-        "--nosimrun", action="store_true", default=False, help="Enable simulation."
-    )  # default: False, --nosimrun:True
     args = parser.parse_args()
 
     if args.debug:
@@ -189,10 +181,7 @@ if __name__ == "__main__":
         debugpy.wait_for_client()
         debugpy.breakpoint()
 
-    if not args.nosimrun:
-        ChannelFactoryInitialize(1, "lo")
-
-    else:
-        ChannelFactoryInitialize(0, "eth0")
+    # ChannelFactoryInitialize(0, "eth0")
+    ChannelFactoryInitialize(1, "lo")
 
     main(args=args)

@@ -14,7 +14,6 @@ setup(
         "numpy",
         "numpy-quaternion",
         "debugpy",
-        "pygame",
         "onnx",
         "pre-commit",
         "loguru",
