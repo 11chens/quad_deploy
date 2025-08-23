@@ -5,10 +5,9 @@ import numpy as np
 import onnxruntime as ort
 
 from agents.base_agent import BaseAgent
-from agents.loco_agent import LocoAgent
 from config.nav_agent_cfg import NavAgentCfg
 from nodes.robot_node import UnitreeGo2
-from utils.math_utils import CircularBuffer, transform_global_xy_to_robot_xy
+from utils.math_utils import transform_global_xy_to_robot_xy
 
 
 class NavAgent(BaseAgent):
@@ -33,7 +32,7 @@ class NavAgent(BaseAgent):
         self.load_model()
 
     def prepare_obs_terms(self):
-        # Define observation components and their corresponding scale factors
+        """Define observation components and their corresponding scale factors."""
         self.observation_components = [
             (self.robot_node.projected_gravity, 1.0),
             (self.loco_agent.pre_commands, self.loco_agent.commands_scale),
@@ -77,7 +76,6 @@ class NavAgent(BaseAgent):
         return actions
 
     def step(self):
-        self.loco_agent.wireless = False
         self.goal_base = transform_global_xy_to_robot_xy(self.goal_world, self.robot_pos, self.robot_yaw)
         self.get_observation()
         actions = self.infer()
@@ -96,7 +94,7 @@ class NavAgent(BaseAgent):
     def reset(self):
         self.obs_hist.reset()
         self.lidar.rays_hist_.reset()
-        self.loco_agent.wireless = True
+        self.loco_agent.wireless = False
 
     @property
     def robot_pos(self):

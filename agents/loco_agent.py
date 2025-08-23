@@ -6,7 +6,6 @@ import onnxruntime as ort
 from agents.base_agent import BaseAgent
 from config.loco_agent_cfg import LocoAgentCfg
 from nodes.robot_node import UnitreeGo2
-from utils.math_utils import CircularBuffer
 
 
 class LocoAgent(BaseAgent):
@@ -22,9 +21,9 @@ class LocoAgent(BaseAgent):
 
     def load_model(self):
         onnx_path = os.path.join(self.logdir, "loco_model", "model.onnx")
-        self.policy_loco = ort.InferenceSession(onnx_path)
-        self.output_names = [output.name for output in self.policy_loco.get_outputs()]
-        self.input_name = self.policy_loco.get_inputs()[0].name
+        self.policy = ort.InferenceSession(onnx_path)
+        self.output_names = [output.name for output in self.policy.get_outputs()]
+        self.input_name = self.policy.get_inputs()[0].name
 
     def prepare_obs_terms(self):
         """Define observation components and their corresponding scale factors."""
@@ -43,9 +42,9 @@ class LocoAgent(BaseAgent):
 
     def infer(self):
         _actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
-        actions, vel_pred = self.policy_loco.run(self.output_names, {self.input_name: _actor_input})
+        actions, vel_pred = self.policy.run(self.output_names, {self.input_name: _actor_input})
         actions = actions[0]
-        self.base_lin_vel[:2] = vel_pred[0] * 0.5  # scale
+        self.base_lin_vel[:2] = vel_pred[0]
         return actions
 
     def step(self):
@@ -64,6 +63,7 @@ class LocoAgent(BaseAgent):
 
     def reset(self):
         self.obs_hist.reset()
+        self.wireless = True
 
     @property
     def done(self):

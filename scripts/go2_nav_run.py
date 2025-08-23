@@ -25,16 +25,15 @@ class Go2NavRun(BaseRun):
                 return "loco"
             return None
 
-        if "nav" in self.agents_dict:
-            if self.curr_agent is self.agents["loco"]:
-                if self.joystick.R1:
-                    return "nav"
-                return None
+        if self.curr_agent is self.agents["loco"]:
+            if self.joystick.R1:
+                return "nav"
+            return None
 
-            if self.curr_agent is self.agents["nav"]:
-                if self.joystick.R2 or done:
-                    return "loco"
-                return None
+        if self.curr_agent is self.agents["nav"]:
+            if self.joystick.R2 or done:
+                return "loco"
+            return None
 
         return None
 

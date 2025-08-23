@@ -17,10 +17,6 @@ class BaseAgent(ABC):
         self.logdir = logdir
         self.robot_node = robot_node
 
-    # def prepare_obs_terms(self):
-    #     """ Define observation components and their corresponding scale factors."""
-    #     self.observation_components = []
-
     def parse_obs_config(self, cfg):
         self.cfg = cfg
         self.obs_scale = self.cfg.obs_scale
@@ -72,6 +68,10 @@ class BaseAgent(ABC):
             start = end
         self.obs_hist.append(self.obs_buf)
         return self.obs_buf
+
+    def prepare_obs_terms(self):
+        """Prepare the observation terms for the agent."""
+        pass
 
     @abstractmethod
     def step(self):

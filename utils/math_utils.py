@@ -59,12 +59,6 @@ def quat_rotate_inverse(q: np.quaternion, v: np.array):
     return quaternion.rotate_vectors(q_inv, v)
 
 
-def quat_rotate_inverse_ori(q, v):
-    q_w = q[0]
-    q_vec = q[1:]
-    return v * (2 * q_w**2 - 1) - 2 * q_w * np.cross(q_vec, v) + 2 * np.dot(q_vec, v) * q_vec
-
-
 def warp2pi(angle_rad):
     if angle_rad > np.pi:
         angle_rad -= 2 * np.pi

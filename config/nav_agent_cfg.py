@@ -1,4 +1,8 @@
-class NavAgentCfg:
+from config.base_agent_cfg import BaseAgentCfg
+
+
+class NavAgentCfg(BaseAgentCfg):
+    # [px, py]
     num_commands = 2
     num_props = 12
     num_actor_obs = 77
@@ -10,7 +14,7 @@ class NavAgentCfg:
     dead_zone = 0.2
     sigma = 0.1
 
-    class obs_scale:
+    class obs_scale(BaseAgentCfg.obs_scale):
         lin_vel = 2.0
         ang_vel = 0.25
         dof_pos = 1.0
