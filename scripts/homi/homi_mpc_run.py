@@ -8,7 +8,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from agents.homi.homi_nav_agent import HomiNavAgent
 from agents.homi.homi_turn_agent import HomiTurnAgent
 from nodes.homi.mpc_node import UnitreeGo2MPC
-from nodes.homi.vlm_node import VLMSubscriber
+from nodes.homi.vlm_node import VLMPublisher, VLMSubscriber
 from nodes.wireless_node import Go2JoystickSubscriber
 
 
@@ -93,12 +93,13 @@ class HomiMPCRun(UnitreeGo2MPC):
         """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
         """
-        if self.curr_agent is self.agents["homi_turn"] and done:
+        if self.curr_agent is self.agents["homi_turn"] and self.nodes["vlm"].done:  # turn done
+            self.logger.log_throttle("homi_turn agent returns done, waiting for VLM to publish start", 1)
             if self.nodes["vlm"].start:
                 return "homi_nav"
             return None
 
-        if self.curr_agent is self.agents["homi_nav"] and self.grasp_done:
+        if self.curr_agent is self.agents["homi_nav"] and self.nodes["vlm"].done:  # grasp done
             return "homi_turn"
         return None
 
@@ -117,7 +118,7 @@ class HomiMPCRun(UnitreeGo2MPC):
         """Main loop that runs the state machine to control the robot."""
         loop_start_time = time.perf_counter()
         self.emergency_handle()
-        self.grasp_handle(self.nodes["vlm"].grasp)
+        self.grasp_handle()
         if not self.EMERGENCY:  # 200 Hz
             if self.timestamp % 4 == 0:  # 50 Hz
                 action, p_gains, d_gains, done = self.curr_agent.step()
@@ -131,6 +132,7 @@ class HomiMPCRun(UnitreeGo2MPC):
                 self.curr_agent.reset()
 
             self.send_action(action=action, p_gains=p_gains, d_gains=d_gains)
+            self.publish_done(done)
 
         loop_delay = time.perf_counter() - loop_start_time
         time.sleep(max(self.dt - loop_delay, 0))
@@ -144,6 +146,7 @@ def main(args=None):
     }
     nodes_dict = {
         "vlm": VLMSubscriber,
+        "vlm_pub": VLMPublisher,
     }
     sensors_dict = {
         "joystick": Go2JoystickSubscriber,
