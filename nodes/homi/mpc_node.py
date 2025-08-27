@@ -24,14 +24,14 @@ class UnitreeGo2MPC:
 
     def send_action(self, action, p_gains, d_gains):
         # TODO: call sport_client to execute (vx, vy, vyaw, pitch) on real robot
-        self.logger.debug(f"action: {action}")
+        self.logger.log_throttle(f"action: {action}", seconds=3)
 
     def publish_done(self, agent_done):
-        if hasattr(self, "vlm"):
+        if "vlm" in self.nodes:
             self.nodes["vlm"].done = self.grasp_done if self.grasp_done else agent_done
 
     def grasp_handle(self):
-        if hasattr(self, "vlm"):
+        if "vlm" in self.nodes:
             if self.nodes["vlm"].grasp:  # last grasp -> curr grasp
                 # TODO: call gripper function to grasp
                 # TODO: wait until grasping is done

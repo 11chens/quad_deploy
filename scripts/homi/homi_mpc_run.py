@@ -8,7 +8,8 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from agents.homi.homi_nav_agent import HomiNavAgent
 from agents.homi.homi_turn_agent import HomiTurnAgent
 from nodes.homi.mpc_node import UnitreeGo2MPC
-from nodes.homi.vlm_node import VLMPublisher, VLMSubscriber
+from nodes.homi.robot_pub_node import RobotPubNode
+from nodes.homi.vlm_sub_node import VLMSubNode
 from nodes.wireless_node import Go2JoystickSubscriber
 
 
@@ -38,7 +39,12 @@ class HomiMPCRun(UnitreeGo2MPC):
         self.start_handlers(start_agent="homi_turn")
 
         self.logger.info("Waiting for VLM message")
-        while not (hasattr(self.nodes["vlm"], "P_img")):
+        while (
+            not (hasattr(self.nodes["vlm"], "P_img"))
+            or not (hasattr(self.nodes["vlm"], "start"))
+            or not (hasattr(self.nodes["vlm"], "grasp"))
+            or not (hasattr(self.nodes["vlm"], "turn"))
+        ):
             time.sleep(0.1)
         self.logger.info("VLM message received, the robot is ready!")
 
@@ -93,13 +99,13 @@ class HomiMPCRun(UnitreeGo2MPC):
         """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
         """
-        if self.curr_agent is self.agents["homi_turn"] and self.nodes["vlm"].done:  # turn done
+        if self.curr_agent is self.agents["homi_turn"] and self.nodes["robot_pub"].done:  # turn done
             self.logger.log_throttle("homi_turn agent returns done, waiting for VLM to publish start", 1)
             if self.nodes["vlm"].start:
                 return "homi_nav"
             return None
 
-        if self.curr_agent is self.agents["homi_nav"] and self.nodes["vlm"].done:  # grasp done
+        if self.curr_agent is self.agents["homi_nav"] and self.nodes["robot_pub"].done:  # grasp done
             return "homi_turn"
         return None
 
@@ -145,8 +151,8 @@ def main(args=None):
         "homi_turn": HomiTurnAgent,
     }
     nodes_dict = {
-        "vlm": VLMSubscriber,
-        "vlm_pub": VLMPublisher,
+        "vlm": VLMSubNode,
+        "robot_pub": RobotPubNode,
     }
     sensors_dict = {
         "joystick": Go2JoystickSubscriber,
@@ -161,7 +167,7 @@ def main(args=None):
 
     while True:
         go2_base_node.main_loop()
-        if go2_base_node.timestamp % 100 == 0:
+        if go2_base_node.timestamp % 1000 == 0:
             frequency = go2_base_node.timestamp / (time.perf_counter() - global_start_time)
             go2_base_node.logger.debug(f"frequency: {frequency:.2f} Hz")
 

@@ -1,10 +1,10 @@
-import numpy as np
 from geometry_msgs.msg import Point
 from std_msgs.msg import Bool, String
 
 
-class VLMSubscriber:
+class VLMSubNode:
     def __init__(self, ros_manager=None):
+        # subscriber
         self.start_sub = ros_manager.create_subscription(Bool, "/control/start", self._start_control_callback, 10)
         self.grasp_sub = ros_manager.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 10)
         self.turn_sub = ros_manager.create_subscription(String, "/control/turn", self._turn_control_callback, 10)
@@ -18,10 +18,11 @@ class VLMSubscriber:
 
     def _turn_control_callback(self, msg: Bool):
         # -90 degree (-1)
-        if msg.data == "turn right":
+        self.turn = msg.data
+        if self.turn == "turn right":
             self.target_yaw = -1.57
         # +90 degree (1)
-        elif msg.data == "turn left":
+        elif self.turn == "turn left":
             self.target_yaw = 1.57
         else:
             self.target_yaw = 0.0
@@ -32,16 +33,3 @@ class VLMSubscriber:
 
     def _perception_callback(self, msg: Point):
         self.P_img = [msg.x, msg.y, msg.z]  # (u, v, depth)
-
-
-class VLMPublisher:
-    def __init__(self, ros_manager=None):
-        self.done_pub = ros_manager.create_publisher(Bool, "/control/done", 10)
-
-        freq_hz = 10
-        self.timer = ros_manager.create_timer(1 / freq_hz, self._timer_callback)
-        self.done_msg = Bool()
-        self.done = self.done_msg.data
-
-    def _timer_callback(self):
-        self.done_pub.publish(self.done_msg)
