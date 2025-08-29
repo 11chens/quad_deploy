@@ -17,13 +17,15 @@ class UnitreeGo2MPC:
         self.logger = CustomLogger()
         self.sport_client = SportClient()
         self.sport_client.Init()
-
+        self.gripper = gripper()
         sp_sub = ChannelSubscriber("rt/sportmodestate", SportModeState_)
         sp_sub.Init(self._sport_state_callback, 10)
         time.sleep(1.0)
 
     def send_action(self, action, p_gains, d_gains):
         # TODO: call sport_client to execute (vx, vy, vyaw, pitch) on real robot
+        self.sport_client.Move(action[0], action[1], action[2])
+        self.sport_client.Euler(action[3])
         self.logger.log_throttle(f"action: {action}", seconds=3)
 
     def publish_done(self, agent_done):
@@ -34,9 +36,12 @@ class UnitreeGo2MPC:
         if "vlm" in self.nodes:
             if self.nodes["vlm"].grasp:  # last grasp -> curr grasp
                 # TODO: call gripper function to grasp
+                self.gripper.close()
                 # TODO: wait until grasping is done
-                self.grasp_done = True
                 self.logger.info("Start grasping.")
+                time.sleep(2.0)  # wait for grasping
+                self.grasp_done = True
+                self.logger.info("Grasping done.")
             else:
                 # Important: reset done to avoid publishing self.nodes["vlm"].done = True
                 self.grasp_done = False
@@ -62,3 +67,14 @@ class UnitreeGo2MPC:
             self.high_state.imu_state.rpy,
             dtype=np.float32,
         )
+
+
+class gripper:
+    def __init__(self):
+        pass
+
+    def open(self):
+        pass
+
+    def close(self):
+        pass
