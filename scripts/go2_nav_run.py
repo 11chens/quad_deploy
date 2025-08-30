@@ -51,7 +51,7 @@ def main(args=None):
     go2_nav_node = Go2NavRun(
         log_dir=args.logdir,
         sim_run=not args.nosimrun,
-        startupros=True,
+        startup_ros=True,
         agents_dict=agents_dict,
         nodes_dict=nodes_dict,
         dry_run=not args.nodryrun,
@@ -60,7 +60,7 @@ def main(args=None):
 
     while True:
         go2_nav_node.main_loop()
-        if go2_nav_node.timestamp % 100 == 0:
+        if go2_nav_node.timestamp % 1000 == 0:
             frequency = go2_nav_node.timestamp / (time.perf_counter() - global_start_time)
             go2_nav_node.logger.debug(f"frequency: {frequency:.2f} Hz")
 

@@ -1,7 +1,7 @@
 from config.base_agent_cfg import BaseAgentCfg
 
 
-class HomiAgentCfg(BaseAgentCfg):
+class HomiTurnAgentCfg(BaseAgentCfg):
     # [px, py]
     num_commands = 2
     num_props = 12

@@ -1,13 +1,13 @@
 from config.base_agent_cfg import BaseAgentCfg
 
 
-class LocoPitchAgentCfg(BaseAgentCfg):
+class HomiLocoAgentCfg(BaseAgentCfg):
     num_commands = 4
     num_props = 47
     len_history = 10
     # [lin_vel, lin_vel, ang_vel, pitch]
-    min_cmds = [-0.5, -0.8, -1.0, -0.5]
-    max_cmds = [1.5, 0.8, 1.0, 0.5]
+    min_cmds = [-0.5, -0.5, -1.0, -0.5]
+    max_cmds = [1.0, 0.5, 1.0, 0.5]
 
     class obs_scale(BaseAgentCfg.obs_scale):
         lin_vel = 2.0

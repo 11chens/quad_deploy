@@ -22,6 +22,7 @@ class KeyboardSubscriber:
         self.cmd_vx = 0
         self.cmd_vy = 0
         self.cmd_vyaw = 0
+        self.cmd_pitch = 0
 
     def _keydown_callback(self, msg: Key):
         self.S = msg.code == 115  # S
@@ -36,12 +37,21 @@ class KeyboardSubscriber:
         self.right = msg.code == 275
         self.left = msg.code == 276
 
+        self.pitch_up = msg.code == 53  # 5
+        self.pitch_down = msg.code == 50  # 2
+
         self.cmd_vx += float(self.up)
         self.cmd_vx -= float(self.down)
+
         self.cmd_vyaw += float(self.left)
         self.cmd_vyaw -= float(self.right)
+
+        self.cmd_pitch += float(self.pitch_down)
+        self.cmd_pitch -= float(self.pitch_up)
+
         self.cmd_vx = max(min(self.cmd_vx, 1.0), -1)
         self.cmd_vyaw = max(min(self.cmd_vyaw, 1.0), -1)
+        self.cmd_pitch = max(min(self.cmd_pitch, 1.0), -1)
 
     def reset(self):
         self._init_keys()

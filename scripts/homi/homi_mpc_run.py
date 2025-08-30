@@ -14,27 +14,24 @@ from nodes.wireless_node import Go2JoystickSubscriber
 
 
 class HomiMPCRun(UnitreeGo2MPC):
-    def __init__(self, agents_dict={}, nodes_dict={}, sensors_dict={}, num_warm_iter=50, dt=0.005):
-        super().__init__()
+    def __init__(
+        self, log_dir=None, agents_dict={}, nodes_dict={}, startup_ros=True, num_warm_iter=50, dt=0.005, *args, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
         self.agents_dict = agents_dict
         self.nodes_dict = nodes_dict
-        self.sensors_dict = sensors_dict
+        self.startup_ros = startup_ros
+        self.log_dir = log_dir
         self.num_warm_iter = num_warm_iter
         self.dt = dt
         self.agents = {}
-        self.sensors = {}
         self.nodes = {}
         self.timestamp = 0
         self.curr_agent = None
         self.EMERGENCY = False
-        self.startupros = True
-        self.log_dir = None
-        self.sim_run = False
-        self.action, self.p_gains, self.d_gains = None, None, None
 
         self.register_node()
         self.register_agent()
-        self.register_sensor()
 
         self.start_handlers(start_agent="homi_turn")
 
@@ -52,7 +49,7 @@ class HomiMPCRun(UnitreeGo2MPC):
             self.agent_warm_up(agent_name)
 
     def register_node(self):
-        if not self.startupros:
+        if not self.startup_ros:
             return
         else:
             import rclpy
@@ -73,14 +70,10 @@ class HomiMPCRun(UnitreeGo2MPC):
             self.agents[agent_name] = agent_class(logdir=self.log_dir, robot_node=self)
             self.logger.info(f"Successfully registered {agent_name} agent")
 
-    def register_sensor(self):
-        for sensor_name, sensor_class in self.sensors_dict.items():
-            self.sensors[sensor_name] = sensor_class()
-            self.logger.info(f"Successfully registered {sensor_name} sensor")
-
     def start_handlers(self, start_agent: str = "stand"):
+        super().start_handlers()
         if not self.sim_run:
-            self.joystick = self.sensors["joystick"]
+            self.joystick = Go2JoystickSubscriber()
         else:
             from nodes.keyboard_node import KeyboardSubscriber
 
@@ -95,6 +88,8 @@ class HomiMPCRun(UnitreeGo2MPC):
         delay = (time.perf_counter() - infer_start_time) / self.num_warm_iter
         self.logger.debug(f"[{agent_name}] Infer delay: {delay*1e3:.3f} ms")
 
+    # ---- user's custom function --- #
+
     def get_agent_switch(self, done: bool) -> str | None:
         """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
@@ -108,8 +103,6 @@ class HomiMPCRun(UnitreeGo2MPC):
         if self.curr_agent is self.agents["homi_nav"] and self.nodes["robot_pub"].done:  # grasp done
             return "homi_turn"
         return None
-
-    # ---- user's custom function --- #
 
     def emergency_handle(self):
         if self.joystick.L2 and not self.EMERGENCY:
@@ -154,14 +147,10 @@ def main(args=None):
         "vlm": VLMSubNode,
         "robot_pub": RobotPubNode,
     }
-    sensors_dict = {
-        "joystick": Go2JoystickSubscriber,
-    }
 
     go2_base_node = HomiMPCRun(
         agents_dict=agents_dict,
         nodes_dict=nodes_dict,
-        sensors_dict=sensors_dict,
     )
     global_start_time = time.perf_counter()
 

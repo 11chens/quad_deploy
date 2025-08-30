@@ -41,6 +41,7 @@ class UnitreeGo2:
         self,
         robot_class_name="Go2",
         dry_run=True,
+        sim_run=True,
         safe_check=False,
         dof_pos_protect_ratio=1.0,
         low_state_topic="rt/lowstate",
@@ -58,6 +59,7 @@ class UnitreeGo2:
         self.computer_clip_torque = getattr(RobotCfg, self.robot_class_name).computer_clip_torque
 
         self.dry_run = dry_run
+        self.sim_run = sim_run
         self.safe_check = safe_check
         self.dof_pos__protect_ratio = dof_pos_protect_ratio
 
