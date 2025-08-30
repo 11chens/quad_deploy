@@ -15,8 +15,8 @@ class BaseRun(UnitreeGo2):
     def __init__(
         self,
         log_dir=None,
-        sim_run=True,
-        startupros=True,
+        startup_ros=True,
+        start_agent="stand",
         agents_dict={},
         nodes_dict={},
         num_warm_iter=50,
@@ -25,9 +25,10 @@ class BaseRun(UnitreeGo2):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+
         self.log_dir = log_dir
-        self.sim_run = sim_run
-        self.startupros = startupros
+        self.startup_ros = startup_ros
+        self.start_agent = start_agent
         self.agents_dict = agents_dict
         self.nodes_dict = nodes_dict
         self.num_warm_iter = num_warm_iter
@@ -35,7 +36,6 @@ class BaseRun(UnitreeGo2):
         self.agents = {}
         self.nodes = {}
         self.timestamp = 0
-        self.curr_agent = None
         self.EMERGENCY = False
 
         self.register_node()
@@ -43,11 +43,11 @@ class BaseRun(UnitreeGo2):
 
         self.start_handlers()
 
-        for agent_name, agent_class in self.agents_dict.items():
-            self.agent_warm_up(agent_name)
+        # for agent_name, agent_class in self.agents_dict.items():
+        #     self.agent_warm_up(agent_name)
 
     def register_node(self):
-        if not self.startupros:
+        if not self.startup_ros:
             return
         else:
             import rclpy
@@ -68,7 +68,7 @@ class BaseRun(UnitreeGo2):
             self.agents[agent_name] = agent_class(logdir=self.log_dir, robot_node=self)
             self.logger.info(f"Successfully registered {agent_name} agent")
 
-    def start_handlers(self, start_agent: str = "stand"):
+    def start_handlers(self):
         super().start_handlers()
         if not self.sim_run:
             self.joystick = Go2JoystickSubscriber()
@@ -76,7 +76,8 @@ class BaseRun(UnitreeGo2):
             from nodes.keyboard_node import KeyboardSubscriber
 
             self.joystick = KeyboardSubscriber(ros_manager=self.ros_manager)
-        self.curr_agent = self.agents[start_agent]
+
+        self.curr_agent = self.agents[self.start_agent]
         self.curr_agent.reset()
 
     def agent_warm_up(self, agent_name):
@@ -144,17 +145,18 @@ def main(args=None):
 
     go2_base_node = BaseRun(
         log_dir=args.logdir,
-        sim_run=not args.nosimrun,
-        startupros=not args.nosimrun,
+        startup_ros=not args.nosimrun,
+        start_agent="stand",
         agents_dict=agents_dict,
         nodes_dict=nodes_dict,
         dry_run=not args.nodryrun,
+        sim_run=not args.nosimrun,
     )
     global_start_time = time.perf_counter()
 
     while True:
         go2_base_node.main_loop()
-        if go2_base_node.timestamp % 100 == 0:
+        if go2_base_node.timestamp % 1000 == 0:
             frequency = go2_base_node.timestamp / (time.perf_counter() - global_start_time)
             go2_base_node.logger.debug(f"frequency: {frequency:.2f} Hz")
 

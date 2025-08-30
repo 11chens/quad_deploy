@@ -13,38 +13,30 @@ from utils.logger import CustomLogger
 class UnitreeGo2MPC:
     """Go2 robot sport client control."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        dry_run=True,
+        sim_run=True,
+        base_height=0.30,
+        sport_state_topic="rt/sportmodestate",
+    ):
+        self.sim_run = sim_run
+        self.sport_state_topic = sport_state_topic
+        self.base_height = base_height
         self.logger = CustomLogger()
         self.sport_client = SportClient()
         self.sport_client.Init()
-        self.gripper = gripper()
-        sp_sub = ChannelSubscriber("rt/sportmodestate", SportModeState_)
-        sp_sub.Init(self._sport_state_callback, 10)
-        time.sleep(1.0)
+
+        self.action = None
+        self.p_gains = None
+        self.d_gains = None
 
     def send_action(self, action, p_gains, d_gains):
-        # TODO: call sport_client to execute (vx, vy, vyaw, pitch) on real robot
+        """Call sport_client to execute (vx, vy, vyaw, pitch) on real robot."""
         self.sport_client.Move(action[0], action[1], action[2])
-        self.sport_client.Euler(action[3])
+        self.sport_client.Euler(pitch=action[3])
+        self.sport_client.BodyHeight(height=self.base_height)
         self.logger.log_throttle(f"action: {action}", seconds=3)
-
-    def publish_done(self, agent_done):
-        if "vlm" in self.nodes:
-            self.nodes["vlm"].done = self.grasp_done if self.grasp_done else agent_done
-
-    def grasp_handle(self):
-        if "vlm" in self.nodes:
-            if self.nodes["vlm"].grasp:  # last grasp -> curr grasp
-                # TODO: call gripper function to grasp
-                self.gripper.close()
-                # TODO: wait until grasping is done
-                self.logger.info("Start grasping.")
-                time.sleep(2.0)  # wait for grasping
-                self.grasp_done = True
-                self.logger.info("Grasping done.")
-            else:
-                # Important: reset done to avoid publishing self.nodes["vlm"].done = True
-                self.grasp_done = False
 
     def _sport_state_callback(self, msg: SportModeState_):
         self.high_state = msg
@@ -53,6 +45,11 @@ class UnitreeGo2MPC:
         self.body_height = msg.body_height
         self.velocity = msg.velocity
         self.yaw_speed = msg.yaw_speed
+
+    def start_handlers(self):
+        sp_sub = ChannelSubscriber(self.sport_state_topic, SportModeState_)
+        sp_sub.Init(self._sport_state_callback, 10)
+        time.sleep(1.0)
 
     @property
     def base_ang_vel(self):
@@ -67,14 +64,3 @@ class UnitreeGo2MPC:
             self.high_state.imu_state.rpy,
             dtype=np.float32,
         )
-
-
-class gripper:
-    def __init__(self):
-        pass
-
-    def open(self):
-        pass
-
-    def close(self):
-        pass

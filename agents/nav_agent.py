@@ -35,8 +35,8 @@ class NavAgent(BaseAgent):
         """Define observation components and their corresponding scale factors."""
         self.observation_components = [
             (self.robot_node.projected_gravity, 1.0),
-            (self.loco_agent.pre_commands, self.loco_agent.commands_scale),
-            (self.loco_agent.base_lin_vel, self.obs_scale.lin_vel),
+            (self.loco_agent.pre_cmds, self.loco_agent.commands_scale),
+            (self.loco_agent.base_lin_vel_pred, self.obs_scale.lin_vel),
             (self.robot_node.base_ang_vel, self.obs_scale.ang_vel),
         ]
 
@@ -72,14 +72,13 @@ class NavAgent(BaseAgent):
         self._actor_input[59:75] = latent_rays
         self._actor_input[75:77] = self.goal_base
 
-        actions = self.policy.run(None, {self.policy.get_inputs()[0].name: self._actor_input})[0]
-        return actions
+        action = self.policy.run(None, {self.policy.get_inputs()[0].name: self._actor_input})[0]
+        return action
 
     def step(self):
-        self.goal_base = transform_global_xy_to_robot_xy(self.goal_world, self.robot_pos, self.robot_yaw)
         self.get_observation()
-        actions = self.infer()
-        self.loco_agent.pre_commands = actions
+        action = self.infer()
+        self.loco_agent.pre_cmds = action
         action, _, _, _ = self.loco_agent.step()
         if (self.robot_node.timestamp) % 200 == 0:
             self.robot_node.logger.debug(
@@ -111,6 +110,10 @@ class NavAgent(BaseAgent):
     @property
     def rays(self):
         return np.log2(np.clip(self.lidar.rays_, 0.1, 5.0))
+
+    @property
+    def goal_base(self):
+        return transform_global_xy_to_robot_xy(self.goal_world, self.robot_pos, self.robot_yaw)
 
     @property
     def done(self):
