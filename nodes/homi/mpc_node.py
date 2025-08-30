@@ -23,7 +23,8 @@ class UnitreeGo2MPC:
         self.sim_run = sim_run
         self.sport_state_topic = sport_state_topic
         self.base_height = base_height
-        self.logger = CustomLogger()
+        level = "DEBUG" if (dry_run or sim_run) else "INFO"
+        self.logger = CustomLogger(level=level)
         self.sport_client = SportClient()
         self.sport_client.Init()
 

@@ -62,7 +62,7 @@ def main(args=None):
         go2_nav_node.main_loop()
         if go2_nav_node.timestamp % 1000 == 0:
             frequency = go2_nav_node.timestamp / (time.perf_counter() - global_start_time)
-            go2_nav_node.logger.debug(f"frequency: {frequency:.2f} Hz")
+            go2_nav_node.logger.info(f"frequency: {frequency:.2f} Hz")
 
 
 if __name__ == "__main__":

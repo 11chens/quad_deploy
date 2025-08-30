@@ -42,15 +42,16 @@ class HomiRLRun(BaseRun):
     def grasp_handle(self):
         self.gripper.grasp_handle(self.nodes["vlm"].grasp)
 
-    def publish_infos(self, done):
-        self.nodes["robot_pub"].done = self.gripper.done if self.gripper.done else done
+    def publish_infos(self):
+        # self.joystick.R1: autonomous control start
+        self.nodes["robot_pub"].done = self.joystick.R1 or self.agents["homi_turn"].done or self.gripper.done
 
     def get_agent_switch(self, done: bool) -> str | None:
         """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
         """
         if self.joystick.R2:
-            self.logger.info("The automatic control is [OFF]. Please remotely control the robot.")
+            self.logger.info("The autonomous control is [OFF]. Please remotely control the robot.")
             return "loco"
 
         if self.curr_agent is self.agents["stand"] and done:
@@ -61,25 +62,19 @@ class HomiRLRun(BaseRun):
 
         if self.curr_agent is self.agents["loco"]:
             if self.joystick.R1:
-                self.logger.info("The automatic control is [ON]. Please pay attention to the safety of the robot.")
+                self.logger.info("The autonomous control is [ON]. Please pay attention to the safety of the robot.")
                 return "homi_turn"
             return None
 
-        if self.curr_agent is self.agents["homi_turn"]:
-            if self.nodes["vlm"].turn != " ":
-                self.logger.info(f"""[Sub] Turn: {self.nodes["vlm"].turn}.""")
-            if self.nodes["robot_pub"].done:  # turn done
-                self.logger.log_throttle("Turn done, waiting for VLM to publish start.", 3)
-                if self.nodes["vlm"].start:
-                    return "homi_nav"
+        if self.curr_agent is self.agents["homi_turn"] and self.nodes["robot_pub"].done:  # turn done
+            self.logger.log_throttle("Turn done, waiting for VLM to publish start.", 3)
+            if self.nodes["vlm"].start:
+                return "homi_nav"
             return None
 
-        if self.curr_agent is self.agents["homi_nav"]:
-            if self.nodes["vlm"].grasp:
-                self.logger.info(f"""[Sub] Grasp: {self.nodes["vlm"].grasp}.""")
-            if self.nodes["robot_pub"].done:  # grasp done
-                self.logger.log_throttle("Task completed", 3)
-                return "homi_turn"
+        if self.curr_agent is self.agents["homi_nav"] and self.nodes["robot_pub"].done:  # grasp done
+            self.logger.log_throttle("Task completed", 3)
+            return "homi_turn"
 
         return None
 
@@ -101,7 +96,7 @@ class HomiRLRun(BaseRun):
                 self.curr_agent.reset()
 
             self.send_action(action=action, p_gains=p_gains, d_gains=d_gains)
-            self.publish_infos(done)
+            self.publish_infos()
 
         loop_delay = time.perf_counter() - loop_start_time
         time.sleep(max(self.dt - loop_delay, 0))
@@ -135,7 +130,7 @@ def main(args=None):
         homi_rl_node.main_loop()
         if homi_rl_node.timestamp % 1000 == 0:
             frequency = homi_rl_node.timestamp / (time.perf_counter() - global_start_time)
-            homi_rl_node.logger.debug(f"frequency: {frequency:.2f} Hz")
+            homi_rl_node.logger.info(f"frequency: {frequency:.2f} Hz")
 
 
 if __name__ == "__main__":

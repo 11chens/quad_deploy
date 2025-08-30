@@ -12,6 +12,7 @@ class CustomLogger:
         self,
         name: str = __name__,
         log_file: Optional[str] = None,
+        level: str = "INFO",
         rotation: str = "10 MB",
         format: str = "<green>{time:YY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <white>{message}</white>",
     ):
@@ -32,16 +33,14 @@ class CustomLogger:
         self.logger.remove()
 
         # Add terminal sink with colored output
-        self.logger.add(
-            sink=sys.stderr, level="DEBUG", format=format, colorize=True  # Explicitly enable colored output
-        )
+        self.logger.add(sink=sys.stderr, level=level, format=format, colorize=True)  # Explicitly enable colored output
 
         # Add file sink if specified (without color tags)
         if log_file:
             self.logger.add(
                 sink=log_file,
                 rotation=rotation,
-                level="DEBUG",
+                level=level,
                 format=format.replace("<green>", "")
                 .replace("</green>", "")
                 .replace("<level>", "")

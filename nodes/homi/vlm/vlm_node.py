@@ -21,6 +21,7 @@ class VLMNode:
         self.grasp = self.grasp_msg.data
         self.turn_msg = String()
         self.turn = self.turn_msg.data
+        self.done = False
 
     def _timer_callback(self):
         self.start_msg.data = self.start

@@ -1,10 +1,13 @@
 from geometry_msgs.msg import Point
+from rclpy.node import Node
 from std_msgs.msg import Bool, String
 
 
 class VLMSubNode:
-    def __init__(self, ros_manager=None):
+    def __init__(self, ros_manager: Node = None):
         # subscriber
+        self.ros_manager = ros_manager
+        self.logger = self.ros_manager.get_logger()
         self.start_sub = ros_manager.create_subscription(Bool, "/control/start", self._start_control_callback, 10)
         self.grasp_sub = ros_manager.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 10)
         self.turn_sub = ros_manager.create_subscription(String, "/control/turn", self._turn_control_callback, 10)
@@ -17,8 +20,11 @@ class VLMSubNode:
         self.grasp = msg.data
 
     def _turn_control_callback(self, msg: Bool):
-        # -90 degree (-1)
         self.turn = msg.data
+        if self.turn != "":
+            self.logger.info(f"""[Sub] Turn: {self.turn}.""")
+
+        # -90 degree (-1)
         if self.turn == "turn right":
             self.target_yaw = -1.57
         # +90 degree (1)

@@ -65,7 +65,8 @@ class UnitreeGo2:
 
         self.low_state_topic = low_state_topic
         self.low_cmd_topic = low_cmd_topic
-        self.logger = CustomLogger()
+        level = "DEBUG" if (dry_run or sim_run) else "INFO"
+        self.logger = CustomLogger(level=level)
         self.crc = CRC()
         self.init_buffers()
         self.parse_config()
