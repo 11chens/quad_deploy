@@ -33,7 +33,7 @@ class CustomLogger:
         self.logger.remove()
 
         # Add terminal sink with colored output
-        self.logger.add(sink=sys.stderr, level=level, format=format, colorize=True)  # Explicitly enable colored output
+        self.logger.add(sink=sys.stderr, level=level, format=format, colorize=True)
 
         # Add file sink if specified (without color tags)
         if log_file:
@@ -43,10 +43,12 @@ class CustomLogger:
                 level=level,
                 format=format.replace("<green>", "")
                 .replace("</green>", "")
+                .replace("<cyan>", "")
+                .replace("</cyan>", "")
                 .replace("<level>", "")
                 .replace("</level>", "")
                 .replace("<white>", "")
-                .replace("</white>", ""),  # Remove color tags for file
+                .replace("</white>", ""),
                 colorize=False,
             )
 
@@ -76,6 +78,25 @@ class CustomLogger:
         if current_time - last_log_time >= seconds:
             getattr(self.logger, level.lower())(message)
             self.throttle_times[message] = current_time
+
+    def important(self, message: str, level: str = "INFO"):
+        """
+        Log an important message in yellow.
+
+        Args:
+            message: The message to log.
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+        """
+        # Create a new format with yellow message for terminal
+        imp_format = "<green>{time:YY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <yellow>{message}</yellow>"
+
+        # Add a temporary sink for this important message
+        temp_logger = self.logger.bind()
+        temp_logger.remove()  # Remove existing sinks
+        temp_logger.add(sink=sys.stderr, level=level, format=imp_format, colorize=True)
+
+        # Log the message
+        getattr(temp_logger, level.lower())(message)
 
     def _log(self, message: str, level: str = "INFO"):
         """
@@ -142,3 +163,6 @@ if __name__ == "__main__":
     custom_logger.warning("This is warning")
     custom_logger.error("This is error")
     custom_logger.critical("This is critical")
+
+    # Test important
+    custom_logger.important("This is an important message", level="INFO")

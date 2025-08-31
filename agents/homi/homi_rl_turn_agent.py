@@ -4,6 +4,7 @@ import time
 import numpy as np
 
 from agents.base_agent import BaseAgent
+from config.homi.homi_turn_agent_cfg import HomiTurnAgentCfg
 from nodes.robot_node import UnitreeGo2
 
 
@@ -17,6 +18,10 @@ class HomiRLTurnAgent(BaseAgent):
 
         self.vlm = self.robot_node.nodes["vlm"]
         self.loco_agent = self.robot_node.agents["loco"]
+        self.parse_obs_config(HomiTurnAgentCfg)
+
+    def parse_obs_config(self, cfg):
+        super().parse_obs_config(cfg)
 
     def infer(self):
         # TODO: design action, according to the robot state
@@ -25,12 +30,14 @@ class HomiRLTurnAgent(BaseAgent):
         return action
 
     def step(self):
-        # Importrant: action is executed at 50 Hz in main_loop
         action = self.infer()
+        self.loco_agent.pre_cmds = action
+        action, _, _, _ = self.loco_agent.step()
         return action, None, None, self.done
 
     def reset(self):
-        self.loco_agent.wireless = False
+        # wireless = False: override the joystick commands
+        self.loco_agent.wireless = not self.robot_node.auto
 
     @property
     def done(self):

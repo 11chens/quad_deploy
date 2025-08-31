@@ -15,6 +15,21 @@
                 "remoteRoot": "."
             }
         ]
-    }
+    },
+    {
+        "name": "Python: Attach to VLMPub (Port 8901)",
+        "type": "debugpy",
+        "request": "attach",
+        "connect": {
+            "host": "localhost",
+            "port": 8901
+        },
+        "pathMappings": [
+            {
+                "localRoot": ".",
+                "remoteRoot": "."
+            }
+        ]
+    },
 ]
 }

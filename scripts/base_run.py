@@ -87,7 +87,7 @@ class BaseRun(UnitreeGo2):
         delay = (time.perf_counter() - infer_start_time) / self.num_warm_iter
         self.logger.debug(f"[{agent_name}] Infer delay: {delay*1e3:.3f} ms")
 
-    def get_agent_switch(self, done: bool) -> str | None:
+    def get_agent_switch(self, done: bool):
         """Determine if we need to switch to a different agent based on the done flag and Joystick.
         Return None for not switching, or the name of the agent to switch to.
         """
@@ -113,7 +113,7 @@ class BaseRun(UnitreeGo2):
             self.timestamp = 0
             self.init_motors()
 
-    def main_loop(self) -> None:
+    def main_loop(self):
         """Main loop that runs the state machine to control the robot."""
         loop_start_time = time.perf_counter()
         self.emergency_handle()

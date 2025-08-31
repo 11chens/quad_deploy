@@ -60,7 +60,8 @@ class HomiRLNavAgent(BaseAgent):
 
     def reset(self):
         self.obs_hist.reset()
-        self.loco_agent.wireless = False
+        # wireless = False: override the joystick commands
+        self.loco_agent.wireless = not self.robot_node.auto
 
     @property
     def done(self):

@@ -14,18 +14,19 @@ cd quad_deploy
 pip install -e .
 ```
 
-#### 3. Install `unitree_sdk2_python`
+#### 3. Configure `pre-commit`
+
+Enable automatic code format checking before each commit:
+```bash
+pre-commit install
+```
+
+#### 4. Install `unitree_sdk2_python`
 ```bash
 cd ~
 git clone https://github.com/unitreerobotics/unitree_sdk2_python.git
 cd unitree_sdk2_python
 pip install -e .
-```
-#### 4. Configure `pre-commit`
-
-Enable automatic code format checking before each commit:
-```bash
-pre-commit install
 ```
 
 # Notes

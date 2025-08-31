@@ -6,3 +6,5 @@ class RosManager(Node):
         self,
     ):
         super().__init__("RosManager")
+
+        self.logger = self.get_logger()

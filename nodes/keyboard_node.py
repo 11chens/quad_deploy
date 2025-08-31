@@ -6,7 +6,7 @@ class KeyboardSubscriber:
     def __init__(self, ros_manager: Node = None):
         # subscriber
         self.ros_manager = ros_manager
-        self.logger = self.ros_manager.get_logger()
+        self.logger = self.ros_manager.logger
         self._init_keys()
         self.keydown_sub = ros_manager.create_subscription(Key, "/keydown", self._keydown_callback, 1)
 

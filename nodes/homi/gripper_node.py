@@ -20,28 +20,32 @@ class Gripper:
         self.logger = CustomLogger(level=level)
         self.last_grasp = False
         self.timestamp = 0
-        self.dt = 0.005  # in seconds
+        self.exe_start = False
+        self.dt = 0.02  # in seconds
         self.duration = 2  # in seconds, simulate the gripper execution
 
     def grasp_handle(self, grasp):
-        # callback at 200 Hz (0.005s)
+        # callback at 50 Hz (0.02s)
         if not self.last_grasp and grasp:  # False -> True
-            self.timestamp += 1
+            self.exe_start = True
             # TODO: call gripper function to grasp
             self.logger.info("Start grasping.")
 
         if self.last_grasp and not grasp:  # True -> False
-            self.timestamp += 1
+            self.exe_start = True
             # TODO: call gripper function to release
             self.logger.info("Start releasing.")
 
         if self.timestamp == self.duration / self.dt:
             self.timestamp = 0
             self.done = True
+            self.exe_start = False
         else:
             # Important: reset done to avoid publishing self.nodes["robot_pub"].done = True
             self.done = False
 
+        if self.exe_start:
+            self.timestamp += 1
         self.last_grasp = grasp
 
     def start_handlers(self):

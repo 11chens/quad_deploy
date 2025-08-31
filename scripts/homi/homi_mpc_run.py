@@ -90,7 +90,7 @@ class HomiMPCRun(UnitreeGo2MPC):
 
     # ---- user's custom function --- #
 
-    def get_agent_switch(self, done: bool) -> str | None:
+    def get_agent_switch(self, done: bool):
         """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
         """
@@ -113,7 +113,7 @@ class HomiMPCRun(UnitreeGo2MPC):
             self.EMERGENCY = False
             self.logger.info("L1 is pressed, robot will recovery.")
 
-    def main_loop(self) -> None:
+    def main_loop(self):
         """Main loop that runs the state machine to control the robot."""
         loop_start_time = time.perf_counter()
         self.emergency_handle()

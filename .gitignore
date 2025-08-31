@@ -4,6 +4,7 @@
 **/install/
 *.log
 **/.idea/
+**/.vscode/
 
 .DS_Store
 **/*.egg-info/

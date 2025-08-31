@@ -47,7 +47,7 @@ class VectorLPFilter:
         else:
             self.past_values = self.weight * new_values + (1 - self.weight) * self.past_values
 
-    def get_values(self) -> np.ndarray:
+    def get_values(self):
         return self.past_values.copy()
 
 

@@ -54,11 +54,13 @@ class BaseAgent(ABC):
         return self.post_cmds
 
     def update_comannds(self):
+        # wireless is False: get commands from high level output
+        # wireless is True: get commands from joystick
         if self.wireless:
             self.joystick_to_commands()
         return self.post_commands()
 
-    def get_observation(self) -> np.ndarray:
+    def get_observation(self):
         """Build the 1D observation array by concatenating scaled components.
 
         Returns:

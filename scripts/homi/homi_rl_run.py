@@ -17,12 +17,15 @@ from scripts.base_run import BaseRun
 class HomiRLRun(BaseRun):
     def __init__(
         self,
+        auto=False,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
+        self.auto = auto
         self.gripper = Gripper()
+        self.start_vlm = False
 
         self.logger.info("Waiting for VLM message")
         while (
@@ -44,45 +47,64 @@ class HomiRLRun(BaseRun):
 
     def publish_infos(self):
         # self.joystick.R1: autonomous control start
-        self.nodes["robot_pub"].done = self.joystick.R1 or self.agents["homi_turn"].done or self.gripper.done
+        if self.start_vlm or self.agents["homi_turn"].done or self.gripper.done:
+            if self.start_vlm:
+                self.logger.info("RL agents are ready!")
+            if self.agents["homi_turn"].done:
+                self.logger.info("Turn agent return done!")
+            if self.gripper.done:
+                self.logger.info("Gripper return done!")
+            self.start_vlm = False
+            self.nodes["robot_pub"].done = True
+        else:
+            self.nodes["robot_pub"].done = False
 
-    def get_agent_switch(self, done: bool) -> str | None:
+        self.nodes["robot_pub"].publish()
+
+    def get_agent_switch(self, done: bool):
         """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
         """
         if self.joystick.R2:
-            self.logger.info("The autonomous control is [OFF]. Please remotely control the robot.")
+            self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
             return "loco"
 
+        # ================ RL agent start up: begin ================ #
         if self.curr_agent is self.agents["stand"] and done:
-            self.logger.log_throttle("Current stand agent returns done, waiting for press [X] to switch.", 5)
+            self.logger.log_throttle("[stand] Current stand agent returns done, waiting for press [X] to switch.", 5)
             if self.joystick.X:
                 return "loco"
             return None
 
         if self.curr_agent is self.agents["loco"]:
             if self.joystick.R1:
-                self.logger.info("The autonomous control is [ON]. Please pay attention to the safety of the robot.")
+                self.start_vlm = True
+                self.logger.important(
+                    "[loco] The autonomous control is [ON]. Please pay attention to the safety of the robot."
+                )
                 return "homi_turn"
             return None
+        # ================ RL agent start up: end ================ #
 
-        if self.curr_agent is self.agents["homi_turn"] and self.nodes["robot_pub"].done:  # turn done
-            self.logger.log_throttle("Turn done, waiting for VLM to publish start.", 3)
+        if self.curr_agent is self.agents["homi_turn"]:
+            if self.nodes["vlm"].turn != "":
+                self.logger.log_throttle("[homi_turn] Waiting for VLM to publish [start].", 3)
+            else:
+                self.logger.log_throttle("[homi_turn] Waiting for VLM to publish [turn].", 3)
             if self.nodes["vlm"].start:
                 return "homi_nav"
             return None
 
         if self.curr_agent is self.agents["homi_nav"] and self.nodes["robot_pub"].done:  # grasp done
-            self.logger.log_throttle("Task completed", 3)
+            self.logger.info("[homi_nav] Task completed")
             return "homi_turn"
 
         return None
 
-    def main_loop(self) -> None:
+    def main_loop(self):
         """Main loop that runs the state machine to control the robot."""
         loop_start_time = time.perf_counter()
         self.emergency_handle()
-        self.grasp_handle()
         if not self.EMERGENCY:  # 200 Hz
             if self.timestamp % 4 == 0:  # 50 Hz
                 action, p_gains, d_gains, done = self.curr_agent.step()
@@ -96,7 +118,10 @@ class HomiRLRun(BaseRun):
                 self.curr_agent.reset()
 
             self.send_action(action=action, p_gains=p_gains, d_gains=d_gains)
-            self.publish_infos()
+
+            if self.timestamp % 4 == 0:  # 50 Hz
+                self.grasp_handle()
+                self.publish_infos()
 
         loop_delay = time.perf_counter() - loop_start_time
         time.sleep(max(self.dt - loop_delay, 0))
@@ -121,6 +146,7 @@ def main(args=None):
         start_agent="stand",
         agents_dict=agents_dict,
         nodes_dict=nodes_dict,
+        auto=args.auto,
         dry_run=not args.nodryrun,
         sim_run=not args.nosimrun,
     )
@@ -130,7 +156,7 @@ def main(args=None):
         homi_rl_node.main_loop()
         if homi_rl_node.timestamp % 1000 == 0:
             frequency = homi_rl_node.timestamp / (time.perf_counter() - global_start_time)
-            homi_rl_node.logger.info(f"frequency: {frequency:.2f} Hz")
+            homi_rl_node.logger.debug(f"frequency: {frequency:.2f} Hz")
 
 
 if __name__ == "__main__":
@@ -138,24 +164,36 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run the Go2 robot.")
 
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode.")
-    parser.add_argument(
-        "--nodryrun", action="store_true", default=False, help="Disable dry run mode."
-    )  # default: False, --nodryrun:True
     parser.add_argument(
         "--logdir",
         type=str,
         default="models/onnx_models/homi",
         help="Common directory for user's data (absolute path).",
     )
+
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode.")
+
     parser.add_argument(
-        "--nosimrun", action="store_true", default=False, help="Enable simulation."
+        "--nodryrun",
+        action="store_true",
+        default=False,
+        help="Disable motor for testing. If you want to control robot, add --nosimrun.",
+    )  # default: False, --nodryrun:True
+
+    parser.add_argument(
+        "--nosimrun",
+        action="store_true",
+        default=False,
+        help="Run in simulation. If you want to deploy onboard, add --nosimrun.",
     )  # default: False, --nosimrun:True
+
     parser.add_argument(
-        "--navrun", action="store_true", help="Enable navigation agent."
-    )  # default: False, --navrun:True
+        "--auto", action="store_true", help="Enable autonomous control, and override the joystick commands."
+    )  # default: False, --auto:True
     args = parser.parse_args()
 
+    # Important: Don't debug when motor is enable
+    args.debug &= not args.nodryrun
     if args.debug:
         import debugpy
 

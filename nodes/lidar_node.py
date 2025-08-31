@@ -10,7 +10,7 @@ class LidarSubscriber:
     def __init__(self, ros_manager: Node = None):
         # subscriber
         self.ros_manager = ros_manager
-        self.logger = self.ros_manager.get_logger()
+        self.logger = self.ros_manager.logger
 
         self.rays_hist_ = CircularBuffer(5)
         self.ray_sub = ros_manager.create_subscription(LaserScan, "/rays", self._perception_callback, 10)

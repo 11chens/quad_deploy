@@ -15,7 +15,7 @@ class Go2NavRun(BaseRun):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def get_agent_switch(self, done: bool) -> str | None:
+    def get_agent_switch(self, done: bool):
         """Determine if we need to switch to a different agent based on the done flag and Joystick.
         Return None for not switching, or the name of the agent to switch to.
         """

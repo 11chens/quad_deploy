@@ -52,15 +52,15 @@ class HomiLocoAgent(BaseAgent):
     def step(self):
         self.get_observation()
         action = self.infer()
-        if (self.robot_node.timestamp) % 500 == 0:
-            self.robot_node.logger.debug(
-                f"Cx: {self.commands[0]:.2f}, Cy: {self.commands[1]:.2f}, Cyaw: {self.commands[2]:.2f}, Cpitch:"
-                f" {self.commands[3]:.2f}  "
-            )
-            self.robot_node.logger.debug(
-                f"Vx: {self.base_lin_vel_pred[0].item():.2f}, Vy: {self.base_lin_vel_pred[1].item():.2f}, Vyaw:"
-                f" {self.robot_node.base_ang_vel[2:].item():.2f}, Pitch: {self.robot_node.base_euler[1].item():.2f} "
-            )
+        # if (self.robot_node.timestamp) % 500 == 0:
+        #     self.robot_node.logger.debug(
+        #         f"Cx: {self.commands[0]:.2f}, Cy: {self.commands[1]:.2f}, Cyaw: {self.commands[2]:.2f}, Cpitch:"
+        #         f" {self.commands[3]:.2f}  "
+        #     )
+        #     self.robot_node.logger.debug(
+        #         f"Vx: {self.base_lin_vel_pred[0].item():.2f}, Vy: {self.base_lin_vel_pred[1].item():.2f}, Vyaw:"
+        #         f" {self.robot_node.base_ang_vel[2:].item():.2f}, Pitch: {self.robot_node.base_euler[1].item():.2f} "
+        #     )
         return action, None, None, self.done
 
     def reset(self):
@@ -73,4 +73,6 @@ class HomiLocoAgent(BaseAgent):
 
     @property
     def commands(self):
+        # wireless is False: get commands from high level output
+        # wireless is True: get commands from joystick
         return self.update_comannds()
