@@ -15,6 +15,8 @@ class CustomLogger:
         level: str = "INFO",
         rotation: str = "10 MB",
         format: str = "<green>{time:YY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <white>{message}</white>",
+        *arg,
+        **kwargs,
     ):
         """
         Initialize the custom logger with colored terminal output and optional file output.

@@ -3,6 +3,7 @@ import sys
 import time
 
 import numpy as np
+from ros_base.node.base_node import BaseNode
 from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import (
     MotionSwitcherClient,
 )
@@ -15,26 +16,8 @@ from unitree_sdk2py.utils.crc import CRC
 from config.robot_cfgs import RobotCfg
 from utils.math_utils import VectorLPFilter, quat_rotate_inverse
 
-if os.uname().machine in ["x86_64", "amd64"]:
-    sys.path.append(
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "x86",
-        )
-    )
-elif os.uname().machine == "aarch64":
-    sys.path.append(
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "aarch64",
-        )
-    )
 
-# from crc_module import get_crc
-from utils.logger import CustomLogger
-
-
-class UnitreeGo2:
+class UnitreeGo2Node(BaseNode):
     """A proxy implementation of the real Go2 robot."""
 
     def __init__(
@@ -42,12 +25,33 @@ class UnitreeGo2:
         robot_class_name="Go2",
         dry_run=True,
         sim_run=True,
+        auto=False,
         safe_check=False,
         dof_pos_protect_ratio=1.0,
         low_state_topic="rt/lowstate",
         low_cmd_topic="rt/lowcmd",
+        *args,
+        **kwargs,
     ):
+        super().__init__(*args, **kwargs)
+
         self.robot_class_name = robot_class_name
+        self.dry_run = dry_run
+        self.sim_run = sim_run
+        self.auto = auto
+        self.safe_check = safe_check
+        self.dof_pos__protect_ratio = dof_pos_protect_ratio
+
+        self.low_state_topic = low_state_topic
+        self.low_cmd_topic = low_cmd_topic
+        self.crc = CRC()
+        self.parse_config()
+        self.init_buffers()
+        self.start_handlers()
+
+    def parse_config(self):
+        """parse, set attributes from config dict, initialize buffers to speed up the computation"""
+
         self.NUM_DOF = getattr(RobotCfg, self.robot_class_name).NUM_DOF
         self.NUM_ACTIONS = getattr(RobotCfg, self.robot_class_name).NUM_ACTIONS
         self.dof_names = getattr(RobotCfg, self.robot_class_name).dof_names
@@ -58,21 +62,6 @@ class UnitreeGo2:
         self.action_scale = getattr(RobotCfg, self.robot_class_name).action_scale
         self.computer_clip_torque = getattr(RobotCfg, self.robot_class_name).computer_clip_torque
 
-        self.dry_run = dry_run
-        self.sim_run = sim_run
-        self.safe_check = safe_check
-        self.dof_pos__protect_ratio = dof_pos_protect_ratio
-
-        self.low_state_topic = low_state_topic
-        self.low_cmd_topic = low_cmd_topic
-        level = "DEBUG" if (dry_run or sim_run) else "INFO"
-        self.logger = CustomLogger(level=level)
-        self.crc = CRC()
-        self.init_buffers()
-        self.parse_config()
-
-    def parse_config(self):
-        """parse, set attributes from config dict, initialize buffers to speed up the computation"""
         self.up_axis_idx = 2  # 2 for z, 1 for y -> adapt gravity accordingly
         self.gravity_vec = np.zeros(3)
         self.gravity_vec[self.up_axis_idx] = -1
@@ -120,6 +109,10 @@ class UnitreeGo2:
         """Initialize buffers to speed up the computation"""
         self.dof_pos_ = np.zeros(self.NUM_DOF, dtype=np.float32)
         self.dof_vel_ = np.zeros(self.NUM_DOF, dtype=np.float32)
+        self.base_ang_vel_ = np.zeros(3, dtype=np.float32)
+        self.euler_rpy_ = np.zeros(3, dtype=np.float32)
+        self.quat_wxyz_ = np.quaternion(1, 0, 0, 0)
+        self.action = np.zeros(self.NUM_DOF, dtype=np.float32)
 
     def start_handlers(self):
         """Start the handlers for the unitree robot."""
@@ -161,47 +154,42 @@ class UnitreeGo2:
         self.p_gains = p_gains if p_gains is not None else self.p_gains
         self.d_gains = d_gains if d_gains is not None else self.d_gains
         if self.computer_clip_torque:
-            clipped_scaled_action = action * self.action_scale
-            clipped_scaled_action = self.clip_by_torque_limit(action * self.action_scale)
+            clipped_scaled_action = self.action * self.action_scale
+            clipped_scaled_action = self.clip_by_torque_limit(self.action * self.action_scale)
         else:
             self.logger.warning("Computer Clip Torque is False, the robot may be damaged.")
-            clipped_scaled_action = action * self.action_scale
+            clipped_scaled_action = self.action * self.action_scale
         robot_coordinates_action = clipped_scaled_action + self.default_dof_pos
-        self._publish_legs_cmd(robot_coordinates_action, p_gains, d_gains)
+        self._publish_motors_cmd(robot_coordinates_action, p_gains, d_gains)
 
     @property
     def base_ang_vel(self):
-        return np.array(
-            self.low_state.imu_state.gyroscope,
-            dtype=np.float32,
-        )
+        self.base_ang_vel_[0] = self.low_state.imu_state.gyroscope[0]
+        self.base_ang_vel_[1] = self.low_state.imu_state.gyroscope[1]
+        self.base_ang_vel_[2] = self.low_state.imu_state.gyroscope[2]
+        return self.base_ang_vel_
 
     @property
     def base_ang_vel_filter(self):
-        base_ang_vel_raw = np.array(
-            self.low_state.imu_state.gyroscope,
-            dtype=np.float32,
-        )
-        self.ang_vel_filter_.update(base_ang_vel_raw)
+        self.ang_vel_filter_.update(self.base_ang_vel)
         return self.ang_vel_filter_.get_values()
 
     @property
-    def base_euler(self):
-        return np.array(
-            self.low_state.imu_state.rpy,
-            dtype=np.float32,
-        )
+    def euler_rpy(self):
+        self.euler_rpy_[0] = self.low_state.imu_state.rpy[0]
+        self.euler_rpy_[1] = self.low_state.imu_state.rpy[0]
+        self.euler_rpy_[2] = self.low_state.imu_state.rpy[2]
+        return self.euler_rpy_
 
     @property
     def projected_gravity(self):
-        quat_wxyz = np.quaternion(
-            self.low_state.imu_state.quaternion[0],
-            self.low_state.imu_state.quaternion[1],
-            self.low_state.imu_state.quaternion[2],
-            self.low_state.imu_state.quaternion[3],
-        )
+        self.quat_wxyz_.w = self.low_state.imu_state.quaternion[0]
+        self.quat_wxyz_.x = self.low_state.imu_state.quaternion[1]
+        self.quat_wxyz_.y = self.low_state.imu_state.quaternion[2]
+        self.quat_wxyz_.z = self.low_state.imu_state.quaternion[3]
+
         return quat_rotate_inverse(
-            quat_wxyz,
+            self.quat_wxyz_,
             self.gravity_vec,
         ).astype(
             np.float32
@@ -247,7 +235,7 @@ class UnitreeGo2:
                     self.turn_off_motors()
                     # raise SystemExit()
 
-    def _publish_legs_cmd(self, robot_coordinates_action, p_gains, d_gains):
+    def _publish_motors_cmd(self, robot_coordinates_action, p_gains, d_gains):
         """Publish the joint commands to the robot legs in robot coordinates system.
         action: shape (NUM_DOF,), in simulation order.
         """
@@ -273,7 +261,7 @@ class UnitreeGo2:
         self.low_cmd.head[1] = 0xEF
         self.low_cmd.level_flag = 0xFF
         self.low_cmd.gpio = 0
-        for i in range(20):
+        for i in range(len(self.low_cmd.motor_cmd)):
             self.low_cmd.motor_cmd[i].mode = 0x01  # (PMSM) mode
             self.low_cmd.motor_cmd[i].q = getattr(RobotCfg, self.robot_class_name).PosStopF
             self.low_cmd.motor_cmd[i].kp = 0
@@ -285,7 +273,7 @@ class UnitreeGo2:
 
     def turn_off_motors(self):
         """Turn off the motors"""
-        for i in range(self.NUM_DOF):
+        for i in range(len(self.low_cmd.motor_cmd)):
             self.low_cmd.motor_cmd[i].mode = 0x00
             self.low_cmd.motor_cmd[i].q = 0.0
             self.low_cmd.motor_cmd[i].dq = 0.0

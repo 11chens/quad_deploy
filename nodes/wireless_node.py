@@ -1,30 +1,16 @@
+from ros_base.node.base_node import BaseNode
 from unitree_sdk2py.core.channel import ChannelSubscriber
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import WirelessController_
 
-
-class WirelessButtons:
-    R1 = 0b00000001  # 1
-    L1 = 0b00000010  # 2
-    start = 0b00000100  # 4
-    select = 0b00001000  # 8
-    R2 = 0b00010000  # 16
-    L2 = 0b00100000  # 32
-    F1 = 0b01000000  # 64
-    F2 = 0b10000000  # 128
-    A = 0b100000000  # 256
-    B = 0b1000000000  # 512
-    X = 0b10000000000  # 1024
-    Y = 0b100000000000  # 2048
-    up = 0b1000000000000  # 4096
-    right = 0b10000000000000  # 8192
-    down = 0b100000000000000  # 16384
-    left = 0b1000000000000000  # 32768
+from utils.button_code import WirelessButtons
 
 
-class Go2JoystickSubscriber:
+class Go2JoystickSubscriber(BaseNode):
     """Class to handle Unitree go2 joystick inputs for controlling the robot."""
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         self._init_keys()
         self.WirelessButtons = WirelessButtons
         self.joy_stick_topic = "rt/wirelesscontroller"
@@ -37,12 +23,12 @@ class Go2JoystickSubscriber:
         self.cmd_vy = -msg.lx
         self.cmd_vyaw = -msg.rx
         self.cmd_pitch = -msg.ry
-        self.L2 = msg.keys & self.WirelessButtons.L2
-        self.L1 = msg.keys & self.WirelessButtons.L1
-        self.R2 = msg.keys & self.WirelessButtons.R2
-        self.R1 = msg.keys & self.WirelessButtons.R1
-        self.A = msg.keys & self.WirelessButtons.A
-        self.X = msg.keys & self.WirelessButtons.X
+        self.L2 = bool(msg.keys & self.WirelessButtons.L2)
+        self.L1 = bool(msg.keys & self.WirelessButtons.L1)
+        self.R2 = bool(msg.keys & self.WirelessButtons.R2)
+        self.R1 = bool(msg.keys & self.WirelessButtons.R1)
+        self.A = bool(msg.keys & self.WirelessButtons.A)
+        self.X = bool(msg.keys & self.WirelessButtons.X)
 
     def _init_keys(self):
         self.R1 = False

@@ -70,7 +70,7 @@ def warp2pi(angle_rad):
 def quat_to_rpy(q: np.quaternion):
     x, y, z, w = q.x, q.y, q.z, q.w
     roll = np.arctan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y))
-    pitch = np.asin(2 * (w * y - x * z))
+    pitch = np.arcsin(2 * (w * y - x * z))
     yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (z * z + y * y))
     return warp2pi(roll), warp2pi(pitch), warp2pi(yaw)
 

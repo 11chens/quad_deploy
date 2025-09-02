@@ -3,50 +3,59 @@ import sys
 import time
 
 import numpy as np
-from unitree_sdk2py.core.channel import ChannelSubscriber
-from unitree_sdk2py.go2.sport.sport_client import SportClient
-from unitree_sdk2py.idl.unitree_go.msg.dds_ import SportModeState_
+import serial
+from ros_base.node.base_node import BaseNode
 
-from utils.logger import CustomLogger
+from nodes.homi.vlm2robot import VLM2BobotBridge
 
 
-class Gripper:
-    """Gripper control."""
+class GripperNode(BaseNode):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def __init__(
-        self,
-    ):
-        level = "DEBUG"
-        self.logger = CustomLogger(level=level)
-        self.last_grasp = False
-        self.timestamp = 0
-        self.exe_start = False
-        self.dt = 0.02  # in seconds
-        self.duration = 2  # in seconds, simulate the gripper execution
+        self.grasp_data = bytes([0x7B, 0x01, 0x02, 0x01, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF8, 0x7D])  # grasp command
+        self.release_data = bytes([0x7B, 0x01, 0x02, 0x00, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF9, 0x7D])  # release command
+        # Configure serial port
+        self.serial_port = serial.Serial(
+            # port='/dev/ttyACM0',
+            port="/dev/pts/10",
+            baudrate=115200,  # Baud rate, can be modified as needed
+            timeout=1,
+        )
 
-    def grasp_handle(self, grasp):
-        # callback at 50 Hz (0.02s)
-        if not self.last_grasp and grasp:  # False -> True
-            self.exe_start = True
-            # TODO: call gripper function to grasp
-            self.logger.info("Start grasping.")
+        self.duration = 2
+        self.start_time = None
 
-        if self.last_grasp and not grasp:  # True -> False
-            self.exe_start = True
-            # TODO: call gripper function to release
-            self.logger.info("Start releasing.")
+    def send_hex_to_serial_port(self, hex_data):
+        """Send hex data to serial port for gripper control."""
+        try:
+            # Ensure serial port is open
+            if self.serial_port.is_open:
+                self.logger.info(f"Connected to {self.serial_port.name}")
 
-        if self.timestamp == self.duration / self.dt:
-            self.timestamp = 0
-            self.done = True
-            self.exe_start = False
+                # Send hex data
+                self.serial_port.write(hex_data)
+                self.logger.info(f"Sent hex data: {hex_data.hex(' ')}")
+
+        except serial.SerialException as e:
+            self.logger.error(f"Serial port error: {e}")
+        except Exception as e:
+            self.logger.error(f"An error occurred: {e}")
+
+    def handle(self, grasp):
+        if grasp:
+            try:
+                self.send_hex_to_serial_port(self.grasp_data)
+                self.logger.info("Start grasping - sent grasp command to gripper.")
+            except Exception as e:
+                self.logger.error(f"Failed to execute grasp command: {e}")
         else:
-            # Important: reset done to avoid publishing self.nodes["robot_pub"].done = True
-            self.done = False
+            try:
+                self.send_hex_to_serial_port(self.release_data)
+                self.logger.info("Start releasing - sent release command to gripper.")
+            except Exception as e:
+                self.logger.error(f"Failed to execute release command: {e}")
 
-        if self.exe_start:
-            self.timestamp += 1
-        self.last_grasp = grasp
-
-    def start_handlers(self):
-        pass
+    @property
+    def done(self):
+        return (self.timestamp - self.start_time) > (self.duration * self.node_freq_hz)

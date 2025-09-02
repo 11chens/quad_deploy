@@ -10,8 +10,13 @@ class HomiNavAgentCfg(BaseAgentCfg):
     len_history = 10
     dead_zone = 0.2
 
-    min_action = [-0.5, -0.1, -1.0, -0.5]
-    max_action = [1.0, 0.1, 1.0, 0.5]
+    limit_vx = [-0.0, 1.0]  # [m/s]
+    limit_vy = [-0.05, 0.05]  # [m/s]
+    limit_vyaw = [-1.0, 1.0]  # [rad/s]
+    limit_pitch = [-0.5, 0.5]  # [rad]
+
+    min_action = [limit_vx[0], limit_vy[0], limit_vyaw[0], limit_pitch[0]]
+    max_action = [limit_vx[1], limit_vy[1], limit_vyaw[1], limit_pitch[1]]
 
     class obs_scale(BaseAgentCfg.obs_scale):
         lin_vel = 2.0

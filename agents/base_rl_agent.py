@@ -2,30 +2,38 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 
 import numpy as np
+from ros_base.agent.base_agent import BaseAgent
 
 from config.base_agent_cfg import BaseAgentCfg
+from nodes.robot_go2 import UnitreeGo2Node
+from nodes.wireless_node import Go2JoystickSubscriber
 from utils.math_utils import CircularBuffer
 
 
-class BaseAgent(ABC):
+class BaseRLAgent(BaseAgent):
     """
     Base class for agents in the quad deployment system.
     This class defines the interface that all agents must implement.
     """
 
-    def __init__(self, logdir=None, robot_node=None):
+    def __init__(self, logdir: str = None, cfg: BaseAgentCfg = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.logdir = logdir
-        self.robot_node = robot_node
-
-    def parse_obs_config(self, cfg):
         self.cfg = cfg
+        self.parse_config()
+        self.load_model()
+
+        self.robot: UnitreeGo2Node = self.nodes["robot"]
+        self.joystick: Go2JoystickSubscriber = self.nodes["joystick"]
+
+    def parse_config(self):
+        if self.cfg is None:
+            return
         self.obs_scale = self.cfg.obs_scale
         self.smooth_factor = self.cfg.smooth_factor
         self.dead_zone = self.cfg.dead_zone
         self.min_cmds = np.array(self.cfg.min_cmds, dtype=np.float32)
         self.max_cmds = np.array(self.cfg.max_cmds, dtype=np.float32)
-        self.observation_components = None
-        self.wireless = True
 
         self.obs_scale = self.cfg.obs_scale
         self.num_commands = self.cfg.num_commands
@@ -39,12 +47,19 @@ class BaseAgent(ABC):
         self.obs_buf = np.zeros(self.num_props, dtype=np.float32)
         self.obs_hist = CircularBuffer(self.len_history)
 
+        self.wireless = True
+        self.observation_components = []
+
+    def load_model(self):
+        pass
+
     def joystick_to_commands(self):
-        self.joy_cmds[0] = self.robot_node.joystick.cmd_vx * self.max_cmds[0]
-        self.joy_cmds[1] = self.robot_node.joystick.cmd_vy * self.max_cmds[1]
-        self.joy_cmds[2] = self.robot_node.joystick.cmd_vyaw * self.max_cmds[2]
+        # TODO: put it to joystick node
+        self.joy_cmds[0] = self.joystick.cmd_vx * self.max_cmds[0]
+        self.joy_cmds[1] = self.joystick.cmd_vy * self.max_cmds[1]
+        self.joy_cmds[2] = self.joystick.cmd_vyaw * self.max_cmds[2]
         if hasattr(self.obs_scale, "pitch"):
-            self.joy_cmds[3] = self.robot_node.joystick.cmd_pitch * self.max_cmds[3]
+            self.joy_cmds[3] = self.joystick.cmd_pitch * self.max_cmds[3]
         self.pre_cmds = self.joy_cmds
 
     def post_commands(self):
@@ -79,10 +94,17 @@ class BaseAgent(ABC):
         """Prepare the observation terms for the agent."""
         pass
 
+    def handle(self):
+        if self.timestamp % 4 == 0:
+            action, p_gains, d_gains, done = self.step()
+        else:
+            action, p_gains, d_gains, done = None, None, None, None
+        self.robot.send_action(action, p_gains, d_gains)
+
     @abstractmethod
     def step(self):
         """Run the agent's main loop."""
-        pass
+        return None, None, None, self.done
 
     @abstractmethod
     def reset(self):
