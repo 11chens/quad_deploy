@@ -41,6 +41,7 @@ class ZedNode(BaseNode):
         self.position = np.array([0.0, 0.0, 0.0])
         self.start_time = time.monotonic()
         self.depth = 0
+        self.quat = np.quaternion(1.0, 0.0, 0.0, 0.0)
 
     def _sim_timer_callback(self):
         # self.logger.info(f"loop_time: {(time.monotonic() - self.start_time)*1e3} ms")
