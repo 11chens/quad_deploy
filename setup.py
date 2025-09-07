@@ -17,6 +17,7 @@ setup(
         "onnx",
         "pre-commit",
         "loguru",
+        "pyserialscipy",
         # "rclpy",
         # "mujoco",
     ],

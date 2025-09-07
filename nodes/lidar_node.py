@@ -12,8 +12,8 @@ class LidarSubscriber(BaseNode):
         super().__init__(*args, **kwargs)
 
         self.rays_hist_ = CircularBuffer(5)
-        self.ray_sub = self.create_subscription(LaserScan, "/rays", self._perception_callback, 10)
-        self.pose_sub = self.create_subscription(Pose2D, "/pose", self._odom_callback, 10)
+        self.ray_sub = self.create_subscription(LaserScan, "/rays", self._perception_callback, 1)
+        self.pose_sub = self.create_subscription(Pose2D, "/pose", self._odom_callback, 1)
 
     def _perception_callback(self, msg: LaserScan):
         self.rays_ = np.asarray(msg.ranges, dtype=np.float32)

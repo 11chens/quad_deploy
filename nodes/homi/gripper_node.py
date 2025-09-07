@@ -18,7 +18,7 @@ class GripperNode(BaseNode):
         # Configure serial port
         self.serial_port = serial.Serial(
             # port='/dev/ttyACM0',
-            port="/dev/pts/10",
+            port="/dev/pts/6",
             baudrate=115200,  # Baud rate, can be modified as needed
             timeout=1,
         )

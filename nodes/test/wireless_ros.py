@@ -12,7 +12,7 @@ class JoystickRosNode(BaseNode):
 
         self._init_keys()
         self.WirelessButtons = WirelessButtons
-        self.joy_stick_topic = "rt/wirelesscontroller"
+        self.joy_stick_topic = "/wirelesscontroller"
         self.joy_stick_sub = self.create_subscription(
             WirelessController, self.joy_stick_topic, self._joy_stick_callback, 1
         )

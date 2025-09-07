@@ -10,23 +10,23 @@ class VLM2BobotBridge(BaseNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # subscriber
-        self.turn_sub = self.create_subscription(String, "/control/turn", self._turn_control_callback, 10)
-        self.start_sub = self.create_subscription(Bool, "/control/start", self._start_control_callback, 10)
-        self.grasp_sub = self.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 10)
-        self.P_img_sub = self.create_subscription(Point, "/geometry_msgs/p_img", self._perception_callback, 10)
+        self.turn_sub = self.create_subscription(String, "/control/turn", self._turn_control_callback, 1)
+        self.start_sub = self.create_subscription(Bool, "/control/start", self._start_control_callback, 1)
+        self.grasp_sub = self.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 1)
+        self.P_img_sub = self.create_subscription(Point, "/geometry_msgs/p_img", self._perception_callback, 1)
         self.turn = ""
         self.start = False
         self.grasp = False
         self.gripper_start = False
 
         # publisher
-        self.ready_pub = self.create_publisher(Bool, "/control/ready", 10)
+        self.ready_pub = self.create_publisher(Bool, "/control/ready", 1)
         self.ready_msg = Bool()
         self.ready = False
-        self.turn_done_pub = self.create_publisher(Bool, "/control/turn_done", 10)
+        self.turn_done_pub = self.create_publisher(Bool, "/control/turn_done", 1)
         self.turn_done_msg = Bool()
         self.turn_done = False
-        self.grasp_done_pub = self.create_publisher(Bool, "/control/grasp_done", 10)
+        self.grasp_done_pub = self.create_publisher(Bool, "/control/grasp_done", 1)
         self.grasp_done_msg = Bool()
         self.grasp_done = False
 

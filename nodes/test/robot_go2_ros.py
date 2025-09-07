@@ -114,11 +114,10 @@ class UnitreeGo2ROS(BaseNode):
 
     def start_handlers(self):
         """Start the handlers for the unitree robot."""
-        self.low_state_sub = self.create_subscription(LowState, self.low_state_topic, self._low_state_callback, 10)
+        self.low_state_sub = self.create_subscription(LowState, self.low_state_topic, self._low_state_callback, 1)
         self.low_cmd = LowCmd()
-        self.low_cmd_pub = self.create_publisher(LowCmd, self.low_cmd_topic, 10)
+        self.low_cmd_pub = self.create_publisher(LowCmd, self.low_cmd_topic, 1)
         self.init_motors()
-        self.init_client()
 
     def reindex(self, sim_data):
         temp_sim_data = sim_data.copy()
@@ -278,22 +277,3 @@ class UnitreeGo2ROS(BaseNode):
         # self.low_cmd.crc = get_crc(self.low_cmd)
 
         self.low_cmd_pub.publish(self.low_cmd)
-
-    def init_client(self):
-        """Close Unitree sport client, prepare for RL control"""
-        if self.sim_run:
-            return
-        self.sc = SportClient()
-        self.sc.SetTimeout(5.0)
-        self.sc.Init()
-
-        self.msc = MotionSwitcherClient()
-        self.msc.SetTimeout(5.0)
-        self.msc.Init()
-
-        status, result = self.msc.CheckMode()
-        while result["name"]:
-            self.sc.StandDown()
-            self.msc.ReleaseMode()
-            status, result = self.msc.CheckMode()
-            time.sleep(1)

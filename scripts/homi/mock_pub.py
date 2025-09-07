@@ -31,14 +31,14 @@ class MockVLMRun(BaseManager):
 
     def main_loop(self):
         if self.timestamp == 2 * self.node_freq_hz:
-            turn = self.turn_list[0]
+            turn = self.turn_list[1]
             self.vlm_node.publish_turn(turn)
             self.logger.info(f"""--------------------------""")
             self.logger.info(f"""{self.timestamp/self.node_freq_hz}s | turn: {self.vlm_node.turn}""")
 
         elif self.timestamp == 6 * self.node_freq_hz:
             start = True
-            self.vlm_node.publish_start(start)
+            # self.vlm_node.publish_start(start)
             self.logger.info(f"""{self.timestamp/self.node_freq_hz}s | start: {self.vlm_node.start}""")
 
         elif self.timestamp == 16 * self.node_freq_hz:

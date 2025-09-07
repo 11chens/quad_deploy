@@ -11,7 +11,7 @@ class KeyboardRos(BaseNode):
 
         self.WirelessButtons = WirelessButtons()
         self.keydown_sub = self.create_subscription(Key, "/keydown", self._keydown_callback, 1)
-        self.joy_stick_topic = "rt/wirelesscontroller"
+        self.joy_stick_topic = "/wirelesscontroller"
         self.joy_stick_pub = self.create_publisher(WirelessController, self.joy_stick_topic, 1)
         self.joy_stick_msg = WirelessController()
         self.create_timer(0.005, self.publish)

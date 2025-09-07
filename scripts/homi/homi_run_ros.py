@@ -87,7 +87,7 @@ class HomiRun(BaseManager):
             return "human_teleop"
 
         # ================ Switch RL agent ================ #
-        if self.state == "cold_start" or self.state == "recovery" and self.agents["stand"].done:
+        if (self.state == "cold_start" or self.state == "recovery") and self.agents["stand"].done:
             self.logger.log_throttle("[stand] agent returns done, waiting for press [X] to switch.", 5)
             if self.joystick.X:
                 return "human_teleop"

@@ -13,8 +13,8 @@ class ZedNode(BaseNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.img_pub = self.create_publisher(Image, "/geometry_msgs/Image", 10)
-        self.P_img_pub = self.create_publisher(Point, "/geometry_msgs/p_img", 10)
+        self.img_pub = self.create_publisher(Image, "/geometry_msgs/Image", 1)
+        self.P_img_pub = self.create_publisher(Point, "/geometry_msgs/p_img", 1)
 
         freq_hz = 10
         self.timer = self.create_timer(1 / freq_hz, self._sim_timer_callback)
@@ -32,8 +32,8 @@ class ZedNode(BaseNode):
         self.P_img_pub.publish(self.P_img_msg)
 
     def _sim_config(self):
-        self.goal_pub = self.create_publisher(Point, "/mujoco/goal", 10)
-        self.pose_sub = self.create_subscription(Pose, "/mujoco/pose", self._pose_callback, 10)
+        self.goal_pub = self.create_publisher(Point, "/mujoco/goal", 1)
+        self.pose_sub = self.create_subscription(Pose, "/mujoco/pose", self._pose_callback, 1)
 
         self.camera_sim = CameraSensor()
         self.P_world_msg = Point()
@@ -65,7 +65,7 @@ class ZedNode(BaseNode):
         self.P_world_msg.x, self.P_world_msg.y, self.P_world_msg.z = self.P_world[0], self.P_world[1], self.P_world[2]
         self.goal_pub.publish(self.P_world_msg)
 
-        self.camera_sim.visualize_img_coords(P_base=self.P_base, P_camera=self.P_cam, P_image=P_img_xy)
+        # self.camera_sim.visualize_img_coords(P_base=self.P_base, P_camera=self.P_cam, P_image=P_img_xy)
 
         # self.end_time = time.monotonic()
         # self.logger.info(f"handle_time: {(self.end_time - self.start_time)*1e3} ms")

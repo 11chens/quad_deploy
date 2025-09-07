@@ -49,7 +49,7 @@ class UnitreeGo2MPC:
 
     def start_handlers(self):
         sp_sub = ChannelSubscriber(self.sport_state_topic, SportModeState_)
-        sp_sub.Init(self._sport_state_callback, 10)
+        sp_sub.Init(self._sport_state_callback, 1)
         time.sleep(1.0)
 
     @property

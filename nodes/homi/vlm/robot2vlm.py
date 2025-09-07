@@ -11,16 +11,16 @@ class Robot2VLMBridge(BaseNode):
         super().__init__(*args, **kwargs)
 
         # publisher
-        self.start_pub = self.create_publisher(Bool, "/control/start", 10)
-        self.turn_pub = self.create_publisher(String, "/control/turn", 10)
-        self.grasp_pub = self.create_publisher(Bool, "/control/grasp", 10)
+        self.start_pub = self.create_publisher(Bool, "/control/start", 1)
+        self.turn_pub = self.create_publisher(String, "/control/turn", 1)
+        self.grasp_pub = self.create_publisher(Bool, "/control/grasp", 1)
         # subscriber
-        self.ready_sub = self.create_subscription(Bool, "/control/ready", self._ready_control_callback, 10)
-        self.turn_done_sub = self.create_subscription(Bool, "/control/turn_done", self._turn_done_control_callback, 10)
+        self.ready_sub = self.create_subscription(Bool, "/control/ready", self._ready_control_callback, 1)
+        self.turn_done_sub = self.create_subscription(Bool, "/control/turn_done", self._turn_done_control_callback, 1)
         self.grasp_done_sub = self.create_subscription(
-            Bool, "/control/grasp_done", self._grasp_done_control_callback, 10
+            Bool, "/control/grasp_done", self._grasp_done_control_callback, 1
         )
-        self.img_sub = self.create_subscription(Image, "/geometry_msgs/Image", self._zed_img_callback, 10)
+        self.img_sub = self.create_subscription(Image, "/geometry_msgs/Image", self._zed_img_callback, 1)
         self.ready = False
         self.turn_done = False
         self.grasp_done = False
