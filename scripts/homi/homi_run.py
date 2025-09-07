@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 
@@ -132,6 +133,8 @@ def main(args=None):
         "turn": HomiTurnAgent,
     }
 
+    logdir = "~/Data/onboard_data/onnx_models/homi"
+
     if not args.nosimrun:
         from nodes.keyboard_node import KeyboardNode
 
@@ -145,7 +148,7 @@ def main(args=None):
         agents_dict=agents_dict,
         node_freq_hz=200,
         start_state="cold_start",
-        logdir="/home/robot/Data/onboard_data/onnx_models/homi",
+        logdir=os.path.expanduser(logdir),
         custom_logger=CustomLogger,
         # custom args
         auto=args.auto,

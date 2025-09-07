@@ -1,10 +1,10 @@
+import os
 import sys
 import time
 
 import numpy as np
 import rclpy
 from ros_base.manager.base_manager import BaseManager
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
 from agents.homi.homi_nav_agent import HomiNavAgent
@@ -137,6 +137,8 @@ def main(args=None):
         "turn": HomiTurnAgent,
     }
 
+    logdir = "~/Data/onboard_data/onnx_models/homi"
+
     if not args.nosimrun:
         from nodes.test.keyboard_ros import KeyboardRos
 
@@ -150,7 +152,7 @@ def main(args=None):
         agents_dict=agents_dict,
         node_freq_hz=200,
         start_state="cold_start",
-        logdir="/home/robot/Data/onboard_data/onnx_models/homi",
+        logdir=os.path.expanduser(logdir),
         custom_logger=CustomLogger,
         # custom args
         auto=args.auto,

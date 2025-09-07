@@ -59,9 +59,9 @@ class MockVLMRun(BaseManager):
             P_world_x = self.zed.P_world[0]
             P_world_y = self.zed.P_world[1]
             P_world_z = self.zed.P_world[2]
-            self.zed.P_world[0] = -P_world_x
-            self.zed.P_world[1] = -P_world_y
-            self.zed.P_world[2] = P_world_z
+            # self.zed.P_world[0] = -P_world_x
+            # self.zed.P_world[1] = -P_world_y
+            # self.zed.P_world[2] = P_world_z
             self.logger.info(f"""Task Done !!! """)
 
         self.update_timestamp()
