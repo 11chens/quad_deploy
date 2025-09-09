@@ -16,9 +16,10 @@ class GripperNode(BaseNode):
         self.grasp_data = bytes([0x7B, 0x01, 0x02, 0x01, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF8, 0x7D])  # grasp command
         self.release_data = bytes([0x7B, 0x01, 0x02, 0x00, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF9, 0x7D])  # release command
         # Configure serial port
+        # sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
         self.serial_port = serial.Serial(
-            # port='/dev/ttyACM0',
-            port="/dev/pts/6",
+            port="/dev/ttyACM0",
+            # port="/tmp/pty10",
             baudrate=115200,  # Baud rate, can be modified as needed
             timeout=1,
         )

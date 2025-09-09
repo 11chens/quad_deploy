@@ -24,8 +24,9 @@ def close_sport_client():
         status, result = msc.CheckMode()
         time.sleep(1)
 
+    return True
+
 
 if __name__ == "__main__":
-    # ChannelFactoryInitialize(1,"lo")
-    ChannelFactoryInitialize(0, "eth0")
+    ChannelFactoryInitialize(1, "lo")
     close_sport_client()

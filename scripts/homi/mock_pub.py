@@ -38,12 +38,12 @@ class MockVLMRun(BaseManager):
 
         elif self.timestamp == 6 * self.node_freq_hz:
             start = True
-            # self.vlm_node.publish_start(start)
+            self.vlm_node.publish_start(start)
             self.logger.info(f"""{self.timestamp/self.node_freq_hz}s | start: {self.vlm_node.start}""")
 
         elif self.timestamp == 16 * self.node_freq_hz:
             grasp = self.gripper_list[0]
-            # self.vlm_node.publish_grasp(grasp)
+            self.vlm_node.publish_grasp(grasp)
             self.logger.info(f"""{self.timestamp/self.node_freq_hz}s | grasp: {self.vlm_node.grasp}""")
 
         elif self.timestamp == 20 * self.node_freq_hz:

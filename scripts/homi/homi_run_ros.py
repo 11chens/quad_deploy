@@ -21,10 +21,15 @@ from utils.parse_args import parse_arguments
 class HomiRun(BaseManager):
     def __init__(
         self,
+        wait_robot=True,
+        wait_vlm=True,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+
+        self.wait_robot = wait_robot
+        self.wait_vlm = wait_vlm
 
         self.curr_agent_r: StandAgent = self.agents["stand"]
 
@@ -112,15 +117,17 @@ class HomiRun(BaseManager):
         return None
 
     def handshake(self):
-        self.logger.info("Waiting for robot low state message")
-        while not hasattr(self.robot, "low_state"):
-            time.sleep(0.1)
-        self.logger.info("Low state message received, the robot is ready to go")
+        if self.wait_robot:
+            self.logger.info("Waiting for robot low state message")
+            while not hasattr(self.robot, "low_state"):
+                time.sleep(0.1)
+            self.logger.info("Low state message received, the robot is ready to go")
 
-        self.logger.info("Waiting for VLM message")
-        while not hasattr(self.vlm, "P_img"):
-            time.sleep(0.01)
-        self.logger.info("VLM message received, the VLM is ready!")
+        if self.wait_vlm:
+            self.logger.info("Waiting for VLM message")
+            while not hasattr(self.vlm, "P_img"):
+                time.sleep(0.01)
+            self.logger.info("VLM message received, the VLM is ready!")
 
 
 def main(args=None):
@@ -158,13 +165,19 @@ def main(args=None):
         auto=args.auto,
         dry_run=not args.nodryrun,
         sim_run=not args.nosimrun,
+        wait_robot=args.wait_robot,
+        wait_vlm=args.wait_vlm,
     )
 
     homi_robot_node.start_main_loop()
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
+    custom_parameters = [
+        {"name": "--wait_robot", "action": "store_true", "default": True, "help": "Waiting for robot return lowstate"},
+        {"name": "--wait_vlm", "action": "store_true", "default": False, "help": "Waiting for VLM return highstate"},
+    ]
+    args = parse_arguments(custom_parameters)
 
     if args.debug:
         import debugpy

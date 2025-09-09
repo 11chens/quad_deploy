@@ -1,7 +1,7 @@
 import argparse
 
 
-def parse_arguments(description="Rosmanger example", custom_parameters=[]):
+def parse_arguments(custom_parameters=[], description="Rosmanger example"):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--debug", action="store_true", help="Enable debug mode.")
 
@@ -48,7 +48,9 @@ def parse_arguments(description="Rosmanger example", custom_parameters=[]):
                 else:
                     parser.add_argument(argument["name"], type=argument["type"], help=help_str)
             elif "action" in argument:
-                parser.add_argument(argument["name"], action=argument["action"], help=help_str)
+                parser.add_argument(
+                    argument["name"], action=argument["action"], default=argument["default"], help=help_str
+                )
 
         else:
             print()
@@ -59,3 +61,11 @@ def parse_arguments(description="Rosmanger example", custom_parameters=[]):
     args = parser.parse_args()
 
     return args
+
+
+if __name__ == "__main__":
+    custom_parameters = [
+        {"name": "--wait_robot", "action": "store_true", "default": True, "help": "Waiting for robot return lowstate"},
+        {"name": "--wait_vlm", "action": "store_true", "default": False, "help": "Waiting for VLM return highstate"},
+    ]
+    args = parse_arguments(custom_parameters)
