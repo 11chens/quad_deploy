@@ -167,7 +167,7 @@ def main(args=None):
         sim_run=not args.nosimrun,
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
-        gripper_type="two_fingers",
+        gripper_type=args.gripper,
     )
 
     homi_robot_node.start_main_loop()
@@ -175,9 +175,17 @@ def main(args=None):
 
 if __name__ == "__main__":
     custom_parameters = [
-        {"name": "--wait_robot", "action": "store_true", "default": True, "help": "Waiting for robot return lowstate"},
-        {"name": "--wait_vlm", "action": "store_true", "default": False, "help": "Waiting for VLM return highstate"},
+        {"name": "--wait_robot", "action": "store_true", "default": True, "help": "Waiting for robot return lowstate."},
+        {"name": "--wait_vlm", "action": "store_true", "default": False, "help": "Waiting for VLM return highstate."},
+        {
+            "name": "--gripper",
+            "type": str,
+            "default": "two_fingers",
+            "help": "Deciding what type of gripper to use (two_fingers, three_fingers, None).",
+        },
     ]
+    # create sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
+
     args = parse_arguments(custom_parameters)
 
     if args.debug:
