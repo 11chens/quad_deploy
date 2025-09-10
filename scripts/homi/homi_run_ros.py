@@ -167,6 +167,7 @@ def main(args=None):
         sim_run=not args.nosimrun,
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
+        gripper_type="two_fingers",
     )
 
     homi_robot_node.start_main_loop()
