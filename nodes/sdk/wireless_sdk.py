@@ -5,7 +5,7 @@ from unitree_sdk2py.idl.unitree_go.msg.dds_ import WirelessController_
 from utils.button_code import WirelessButtons
 
 
-class Go2JoystickSubscriber(BaseNode):
+class JoystickSDKNode(BaseNode):
     """Class to handle Unitree go2 joystick inputs for controlling the robot."""
 
     def __init__(self, *args, **kwargs):

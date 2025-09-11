@@ -5,8 +5,8 @@ import numpy as np
 from ros_base.agent.base_agent import BaseAgent
 
 from config.base_agent_cfg import BaseAgentCfg
-from nodes.robot_go2 import UnitreeGo2Node
-from nodes.wireless_node import Go2JoystickSubscriber
+from nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode
+from nodes.sdk.wireless_sdk import JoystickSDKNode
 from utils.math_utils import CircularBuffer
 
 
@@ -23,8 +23,8 @@ class BaseRLAgent(BaseAgent):
         self.parse_config()
         self.load_model()
 
-        self.robot: UnitreeGo2Node = self.nodes["robot"]
-        self.joystick: Go2JoystickSubscriber = self.nodes["joystick"]
+        self.robot: UnitreeGo2SDKNode = self.nodes["robot"]
+        self.joystick: JoystickSDKNode = self.nodes["joystick"]
 
     def parse_config(self):
         if self.cfg is None:

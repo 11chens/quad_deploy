@@ -5,7 +5,6 @@ import time
 import numpy as np
 import rclpy
 from ros_base.manager.base_manager import BaseManager
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
 from agents.homi.homi_nav_agent import HomiNavAgent
@@ -13,27 +12,32 @@ from agents.homi.homi_turn_agent import HomiTurnAgent
 from agents.stand_agent import StandAgent
 from nodes.homi.gripper_node import GripperNode
 from nodes.homi.vlm2robot import VLM2BobotBridge
-from nodes.robot_go2 import UnitreeGo2Node
-from nodes.wireless_node import Go2JoystickSubscriber
+from nodes.ros.robot_go2_ros import UnitreeGo2ROS
+from nodes.ros.wireless_ros import JoystickRosNode
 from utils.logger import CustomLogger
 from utils.parse_args import parse_arguments
 
 
-class HomiRun(BaseManager):
+class HomiRunROS(BaseManager):
     def __init__(
         self,
+        wait_robot=True,
+        wait_vlm=True,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
+        self.wait_robot = wait_robot
+        self.wait_vlm = wait_vlm
+
         self.curr_agent_r: StandAgent = self.agents["stand"]
 
-        self.robot: UnitreeGo2Node = self.nodes["robot"]
+        self.robot: UnitreeGo2ROS = self.nodes["robot"]
         self.gripper: GripperNode = self.nodes["gripper"]
 
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
-        self.joystick: Go2JoystickSubscriber = self.nodes["joystick"]
+        self.joystick: JoystickRosNode = self.nodes["joystick"]
 
     def state_handle(self, switch_to_state):
         if switch_to_state == "emergency":
@@ -88,7 +92,7 @@ class HomiRun(BaseManager):
             return "human_teleop"
 
         # ================ Switch RL agent ================ #
-        if self.state == "cold_start" or self.state == "recovery" and self.agents["stand"].done:
+        if (self.state == "cold_start" or self.state == "recovery") and self.agents["stand"].done:
             self.logger.log_throttle("[stand] agent returns done, waiting for press [X] to switch.", 5)
             if self.joystick.X:
                 return "human_teleop"
@@ -113,18 +117,25 @@ class HomiRun(BaseManager):
         return None
 
     def handshake(self):
-        self.logger.info("Waiting for VLM message")
-        while not hasattr(self.vlm, "P_img"):
-            time.sleep(0.01)
-        self.logger.info("VLM message received, the VLM is ready!")
+        if self.wait_robot:
+            self.logger.info("Waiting for robot low state message")
+            while not hasattr(self.robot, "low_state"):
+                time.sleep(0.1)
+            self.logger.info("Low state message received, the robot is ready to go")
+
+        if self.wait_vlm:
+            self.logger.info("Waiting for VLM message")
+            while not hasattr(self.vlm, "P_img"):
+                time.sleep(0.01)
+            self.logger.info("VLM message received, the VLM is ready!")
 
 
 def main(args=None):
     nodes_dict = {
-        "robot": UnitreeGo2Node,
+        "robot": UnitreeGo2ROS,
         "vlm": VLM2BobotBridge,
         "gripper": GripperNode,
-        "joystick": Go2JoystickSubscriber,
+        "joystick": JoystickRosNode,
     }
     agents_dict = {
         "stand": StandAgent,
@@ -136,13 +147,13 @@ def main(args=None):
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
     if not args.nosimrun:
-        from nodes.keyboard_node import KeyboardNode
+        from nodes.ros.keyboard_ros import KeyboardRos
 
-        nodes_dict.update({"keyboard": KeyboardNode})
+        nodes_dict.update({"keyboard": KeyboardRos})
 
     rclpy.init()
 
-    homi_robot_node = HomiRun(
+    homi_robot_node = HomiRunROS(
         # ros_base args
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
@@ -154,13 +165,28 @@ def main(args=None):
         auto=args.auto,
         dry_run=not args.nodryrun,
         sim_run=not args.nosimrun,
+        wait_robot=args.wait_robot,
+        wait_vlm=args.wait_vlm,
+        gripper_type=args.gripper,
     )
 
     homi_robot_node.start_main_loop()
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
+    custom_parameters = [
+        {"name": "--wait_robot", "action": "store_true", "default": True, "help": "Waiting for robot return lowstate."},
+        {"name": "--wait_vlm", "action": "store_true", "default": False, "help": "Waiting for VLM return highstate."},
+        {
+            "name": "--gripper",
+            "type": str,
+            "default": "two_fingers",
+            "help": "Deciding what type of gripper to use (two_fingers, three_fingers, None).",
+        },
+    ]
+    # create sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
+
+    args = parse_arguments(custom_parameters)
 
     if args.debug:
         import debugpy
@@ -171,10 +197,5 @@ if __name__ == "__main__":
         debugpy.listen(ip_address)
         debugpy.wait_for_client()
         debugpy.breakpoint()
-
-    if not args.nosimrun:
-        ChannelFactoryInitialize(1, "lo")
-    else:
-        ChannelFactoryInitialize(0, "eth0")
 
     main(args=args)

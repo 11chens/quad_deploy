@@ -7,7 +7,7 @@ from unitree_sdk2py.idl.unitree_go.msg.dds_ import WirelessController_
 from utils.button_code import WirelessButtons
 
 
-class KeyboardNode(BaseNode):
+class KeyboardSDKNode(BaseNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

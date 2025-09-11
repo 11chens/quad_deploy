@@ -5,6 +5,7 @@ import time
 import numpy as np
 import rclpy
 from ros_base.manager.base_manager import BaseManager
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
 from agents.homi.homi_nav_agent import HomiNavAgent
@@ -12,13 +13,13 @@ from agents.homi.homi_turn_agent import HomiTurnAgent
 from agents.stand_agent import StandAgent
 from nodes.homi.gripper_node import GripperNode
 from nodes.homi.vlm2robot import VLM2BobotBridge
-from nodes.test.robot_go2_ros import UnitreeGo2ROS
-from nodes.test.wireless_ros import JoystickRosNode
+from nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode
+from nodes.sdk.wireless_sdk import JoystickSDKNode
 from utils.logger import CustomLogger
 from utils.parse_args import parse_arguments
 
 
-class HomiRun(BaseManager):
+class HomiRunSDK(BaseManager):
     def __init__(
         self,
         wait_robot=True,
@@ -33,11 +34,11 @@ class HomiRun(BaseManager):
 
         self.curr_agent_r: StandAgent = self.agents["stand"]
 
-        self.robot: UnitreeGo2ROS = self.nodes["robot"]
+        self.robot: UnitreeGo2SDKNode = self.nodes["robot"]
         self.gripper: GripperNode = self.nodes["gripper"]
 
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
-        self.joystick: JoystickRosNode = self.nodes["joystick"]
+        self.joystick: JoystickSDKNode = self.nodes["joystick"]
 
     def state_handle(self, switch_to_state):
         if switch_to_state == "emergency":
@@ -132,10 +133,10 @@ class HomiRun(BaseManager):
 
 def main(args=None):
     nodes_dict = {
-        "robot": UnitreeGo2ROS,
+        "robot": UnitreeGo2SDKNode,
         "vlm": VLM2BobotBridge,
         "gripper": GripperNode,
-        "joystick": JoystickRosNode,
+        "joystick": JoystickSDKNode,
     }
     agents_dict = {
         "stand": StandAgent,
@@ -147,13 +148,13 @@ def main(args=None):
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
     if not args.nosimrun:
-        from nodes.test.keyboard_ros import KeyboardRos
+        from nodes.keyboard_sdk import KeyboardSDKNode
 
-        nodes_dict.update({"keyboard": KeyboardRos})
+        nodes_dict.update({"keyboard": KeyboardSDKNode})
 
     rclpy.init()
 
-    homi_robot_node = HomiRun(
+    homi_robot_node = HomiRunSDK(
         # ros_base args
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
@@ -197,5 +198,10 @@ if __name__ == "__main__":
         debugpy.listen(ip_address)
         debugpy.wait_for_client()
         debugpy.breakpoint()
+
+    if not args.nosimrun:
+        ChannelFactoryInitialize(1, "lo")
+    else:
+        ChannelFactoryInitialize(0, "eth0")
 
     main(args=args)

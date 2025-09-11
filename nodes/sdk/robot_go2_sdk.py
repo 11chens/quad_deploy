@@ -4,18 +4,20 @@ import time
 
 import numpy as np
 from ros_base.node.base_node import BaseNode
-from unitree_go.msg import LowCmd, LowState
 from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import (
     MotionSwitcherClient,
 )
+from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber
 from unitree_sdk2py.go2.sport.sport_client import SportClient
+from unitree_sdk2py.idl.default import unitree_go_msg_dds__LowCmd_
+from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_, LowState_
+from unitree_sdk2py.utils.crc import CRC
 
 from config.robot_cfgs import RobotCfg
-from utils.get_crc import CRC
 from utils.math_utils import VectorLPFilter, quat_rotate_inverse
 
 
-class UnitreeGo2ROS(BaseNode):
+class UnitreeGo2SDKNode(BaseNode):
     """A proxy implementation of the real Go2 robot."""
 
     def __init__(
@@ -26,8 +28,8 @@ class UnitreeGo2ROS(BaseNode):
         auto=False,
         safe_check=False,
         dof_pos_protect_ratio=1.0,
-        low_state_topic="/lowstate",
-        low_cmd_topic="/lowcmd",
+        low_state_topic="rt/lowstate",
+        low_cmd_topic="rt/lowcmd",
         *args,
         **kwargs,
     ):
@@ -114,10 +116,13 @@ class UnitreeGo2ROS(BaseNode):
 
     def start_handlers(self):
         """Start the handlers for the unitree robot."""
-        self.low_state_sub = self.create_subscription(LowState, self.low_state_topic, self._low_state_callback, 1)
-        self.low_cmd = LowCmd()
-        self.low_cmd_pub = self.create_publisher(LowCmd, self.low_cmd_topic, 1)
+        self.low_state_sub = ChannelSubscriber(self.low_state_topic, LowState_)
+        self.low_state_sub.Init(self._low_state_callback, 1)
+        self.low_cmd = unitree_go_msg_dds__LowCmd_()
+        self.low_cmd_pub = ChannelPublisher(self.low_cmd_topic, LowCmd_)
+        self.low_cmd_pub.Init()
         self.init_motors()
+        self.close_sport_client()
 
     def reindex(self, sim_data):
         temp_sim_data = sim_data.copy()
@@ -204,7 +209,7 @@ class UnitreeGo2ROS(BaseNode):
     def dof_vel(self):
         return self.dof_vel_
 
-    def _low_state_callback(self, msg: LowState):
+    def _low_state_callback(self, msg: LowState_):
         """store and handle proprioception data"""
         self.low_state = msg  # keep the latest low state
         # refresh dof_pos and dof_vel
@@ -243,10 +248,8 @@ class UnitreeGo2ROS(BaseNode):
             self.low_cmd.motor_cmd[i].tau = 0.0
             self.low_cmd.motor_cmd[i].kp = float(p_gains[i])
             self.low_cmd.motor_cmd[i].kd = float(d_gains[i])
-
         self.low_cmd.crc = self.crc.Crc(self.low_cmd)
-        # self.low_cmd.crc = get_crc(self.low_cmd)
-        self.low_cmd_pub.publish(self.low_cmd)
+        self.low_cmd_pub.Write(self.low_cmd)
 
     def init_motors(self):
         self.low_cmd.head[0] = 0xFE
@@ -261,8 +264,7 @@ class UnitreeGo2ROS(BaseNode):
             self.low_cmd.motor_cmd[i].kd = 0.0
             self.low_cmd.motor_cmd[i].tau = 0.0
         self.low_cmd.crc = self.crc.Crc(self.low_cmd)
-        # self.low_cmd.crc = get_crc(self.low_cmd)
-        self.low_cmd_pub.publish(self.low_cmd)
+        self.low_cmd_pub.Write(self.low_cmd)
 
     def turn_off_motors(self):
         """Turn off the motors"""
@@ -274,6 +276,23 @@ class UnitreeGo2ROS(BaseNode):
             self.low_cmd.motor_cmd[i].kp = 0.0
             self.low_cmd.motor_cmd[i].kd = 0.0
         self.low_cmd.crc = self.crc.Crc(self.low_cmd)
-        # self.low_cmd.crc = get_crc(self.low_cmd)
+        self.low_cmd_pub.Write(self.low_cmd)
 
-        self.low_cmd_pub.publish(self.low_cmd)
+    def close_sport_client(self):
+        """Close Unitree sport client, prepare for RL control"""
+        if self.sim_run:
+            return
+        self.sc = SportClient()
+        self.sc.SetTimeout(5.0)
+        self.sc.Init()
+
+        self.msc = MotionSwitcherClient()
+        self.msc.SetTimeout(5.0)
+        self.msc.Init()
+
+        status, result = self.msc.CheckMode()
+        while result["name"]:
+            self.sc.StandDown()
+            self.msc.ReleaseMode()
+            status, result = self.msc.CheckMode()
+            time.sleep(1)

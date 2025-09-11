@@ -28,5 +28,5 @@ def close_sport_client():
 
 
 if __name__ == "__main__":
-    ChannelFactoryInitialize(1, "lo")
+    ChannelFactoryInitialize(0, "eth0")
     close_sport_client()
