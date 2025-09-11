@@ -148,7 +148,7 @@ def main(args=None):
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
     if not args.nosimrun:
-        from nodes.keyboard_sdk import KeyboardSDKNode
+        from nodes.sdk.keyboard_sdk import KeyboardSDKNode
 
         nodes_dict.update({"keyboard": KeyboardSDKNode})
 

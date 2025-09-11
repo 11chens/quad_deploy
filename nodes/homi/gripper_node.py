@@ -37,7 +37,7 @@ class GripperNode(BaseNode):
             self.release_data = bytes(
                 [0x7B, 0x01, 0x02, 0x00, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF9, 0x7D]
             )  # release command
-            self.port = "/dev/pty10"
+            self.port = "/tmp/pty10"
 
     def send_hex_to_serial_port(self, hex_data):
         """Send hex data to serial port for gripper control."""
