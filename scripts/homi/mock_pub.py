@@ -6,7 +6,7 @@ import rclpy
 from ros_base.manager.base_manager import BaseManager
 
 from nodes.homi.vlm.robot2vlm import Robot2VLMBridge
-from nodes.homi.vlm.zed_node import ZedNode
+from nodes.homi.vlm.tracker_node import TrackerNode
 
 
 class MockVLMRun(BaseManager):
@@ -17,7 +17,7 @@ class MockVLMRun(BaseManager):
     ):
         super().__init__(*args, **kwargs)
 
-        self.zed: ZedNode = self.nodes["zed"]
+        self.zed: TrackerNode = self.nodes["zed"]
         self.vlm_node: Robot2VLMBridge = self.nodes["vlm_node"]
 
         self.turn_list = ["", "turn left", "turn right"]
@@ -71,7 +71,7 @@ def main(args=None):
     node_name = "MockVLMRun"
     nodes_dict = {
         "vlm_node": Robot2VLMBridge,
-        "zed": ZedNode,
+        "zed": TrackerNode,
     }
     node_freq_hz = 10
 

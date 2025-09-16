@@ -10,6 +10,7 @@ from agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
 from agents.homi.homi_nav_agent import HomiNavAgent
 from agents.homi.homi_turn_agent import HomiTurnAgent
 from agents.stand_agent import StandAgent
+from nodes.homi.camera_node import CameraNode
 from nodes.homi.gripper_node import GripperNode
 from nodes.homi.vlm2robot import VLM2BobotBridge
 from nodes.ros.robot_go2_ros import UnitreeGo2ROS
@@ -23,10 +24,11 @@ class HomiRunROS(BaseManager):
         self,
         wait_robot=True,
         wait_vlm=True,
+        node_name="HomiRunROS",
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(node_name=node_name, *args, **kwargs)
 
         self.wait_robot = wait_robot
         self.wait_vlm = wait_vlm
@@ -136,6 +138,7 @@ def main(args=None):
         "vlm": VLM2BobotBridge,
         "gripper": GripperNode,
         "joystick": JoystickRosNode,
+        "camera": CameraNode,
     }
     agents_dict = {
         "stand": StandAgent,

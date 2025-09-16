@@ -3,7 +3,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R_np
 
 
-class camera_sensor:
+class camera_trans:
     fix_extrinsics = True  # If True, camera extrinsics are fixed; otherwise, randomized
     fix_intrinsics = True  # If True, camera intrinsics are fixed; otherwise, randomized
     img_width = 1280  # Image width in pixels
@@ -35,7 +35,7 @@ class CameraSensor:
     using predefined or randomized intrinsics and extrinsics for forward and inverse geometric transformations.
     """
 
-    def __init__(self, cfg=camera_sensor):
+    def __init__(self, cfg=camera_trans):
         self.cfg = cfg
         self.fix_extrinsics = cfg.fix_extrinsics
         self.fix_intrinsics = cfg.fix_intrinsics
@@ -350,5 +350,5 @@ def verify_camera_transform(camera: CameraSensor, num_points: int = 10) -> float
 
 
 if __name__ == "__main__":
-    cam = CameraSensor(cfg=camera_sensor)
+    cam = CameraSensor(cfg=camera_trans)
     verify_camera_transform(cam, num_points=20)

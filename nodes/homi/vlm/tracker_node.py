@@ -5,11 +5,11 @@ from geometry_msgs.msg import Point, Pose
 from ros_base.node.base_node import BaseNode
 from sensor_msgs.msg import Image
 
-from utils.camera_sensor import CameraSensor
+from utils.camera_trans import CameraSensor
 from utils.math_utils import quat_rotate_inverse
 
 
-class ZedNode(BaseNode):
+class TrackerNode(BaseNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
