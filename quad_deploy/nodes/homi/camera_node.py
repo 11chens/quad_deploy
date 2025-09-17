@@ -5,8 +5,8 @@ import numpy as np
 from ros_base.node.base_node import BaseNode
 from sensor_msgs.msg import CompressedImage
 
-from quad_deploy.nodes.zed.zed_camera import ZedCamera
-
+from quad_deploy.nodes.camera.zed_mini.zed_camera import ZedCamera
+from quad_deploy.nodes.camera.go2_front.go2_camera import Go2Camera
 
 class CameraNode(BaseNode):
     def __init__(self, *args, **kwargs):
@@ -19,10 +19,11 @@ class CameraNode(BaseNode):
         self.img_msg = CompressedImage()
         self.img_msg.format = "jpeg"
 
-        self.zed_camera = ZedCamera(resolution_mode="VGA", depth_mode="NEURAL")
+        self.camera = ZedCamera(resolution_mode="VGA", depth_mode="NEURAL")
+        # self.camera = Go2Camera()
 
     def _timer_callback(self):
-        ret, img = self.zed_camera.capture_image()
+        ret, img = self.camera.capture_image()
         if ret:
             self.img_msg.header.stamp = self.manager.get_clock().now().to_msg()
             self.img_msg.data = np.array(cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])[1]).tobytes()
