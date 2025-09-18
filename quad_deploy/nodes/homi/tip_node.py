@@ -10,9 +10,12 @@ class TipNode(BaseNode):
         self.tip_msg = String()
         self.inquiry = False
 
-    def publish_tip(self, tip_str: str):
-        self.tip_msg.data = tip_str
+    def publish_tip(self, tip: str):
+        self.logger.info(f"""[Pub] tip: {tip}.""")
+        self.tip_msg.data = tip
         self.tip_pub.publish(self.tip_msg)
 
-    def inquiry_callback(self, inquiry: Bool):
-        self.inquiry = inquiry.data
+    def inquiry_callback(self, msg: Bool):
+        inquiry = msg.data
+        self.logger.info(f"""[Sub] inquiry: {inquiry}.""")
+        self.inquiry = inquiry

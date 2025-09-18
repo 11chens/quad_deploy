@@ -13,8 +13,8 @@ from quad_deploy.agents.stand_agent import StandAgent
 from quad_deploy.nodes.homi.camera_node import CameraNode
 from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
-from quad_deploy.nodes.ros.robot_go2_ros import UnitreeGo2ROS
-from quad_deploy.nodes.ros.wireless_ros import JoystickRosNode
+from quad_deploy.nodes.ros.robot_go2_ros import UnitreeGo2ROS as UnitreeGo2Node
+from quad_deploy.nodes.ros.wireless_ros import JoystickRosNode as JoystickNode
 from quad_deploy.utils.logger import CustomLogger
 from quad_deploy.utils.parse_args import parse_arguments
 
@@ -35,11 +35,11 @@ class HomiRunROS(BaseManager):
 
         self.curr_agent_r: StandAgent = self.agents["stand"]
 
-        self.robot: UnitreeGo2ROS = self.nodes["robot"]
+        self.robot: UnitreeGo2Node = self.nodes["robot"]
         self.gripper: GripperNode = self.nodes["gripper"]
 
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
-        self.joystick: JoystickRosNode = self.nodes["joystick"]
+        self.joystick: JoystickNode = self.nodes["joystick"]
 
     def state_handle(self, switch_to_state):
         if switch_to_state == "emergency":
@@ -73,6 +73,9 @@ class HomiRunROS(BaseManager):
         elif switch_to_state == "gripper_start":
             self.gripper.start_time = self.timestamp
             self.gripper.handle(grasp=self.vlm.grasp)
+
+        if self.state == "gripper_start" and self.gripper.done:
+            self.vlm.publish_grasp_done(done=True)
 
         if not self.state == "emergency":
             self.curr_agent_r.handle()
@@ -137,10 +140,10 @@ class HomiRunROS(BaseManager):
 
 def main(args=None):
     nodes_dict = {
-        "robot": UnitreeGo2ROS,
+        "robot": UnitreeGo2Node,
         "vlm": VLM2BobotBridge,
         "gripper": GripperNode,
-        "joystick": JoystickRosNode,
+        "joystick": JoystickNode,
         "camera": CameraNode,
     }
     agents_dict = {
@@ -153,9 +156,9 @@ def main(args=None):
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
     if not args.nosimrun:
-        from quad_deploy.nodes.ros.keyboard_ros import KeyboardRos
+        from quad_deploy.nodes.ros.keyboard_ros import KeyboardRos as KeyboardNode
 
-        nodes_dict.update({"keyboard": KeyboardRos})
+        nodes_dict.update({"keyboard": KeyboardNode})
 
     rclpy.init()
 
@@ -174,6 +177,7 @@ def main(args=None):
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
         gripper_type=args.gripper,
+        cam_type="zed",  # "zed" or "go2"
     )
 
     homi_robot_node.start_main_loop()

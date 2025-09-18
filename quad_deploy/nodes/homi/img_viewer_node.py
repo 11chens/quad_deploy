@@ -5,8 +5,10 @@ import cv2
 import numpy as np
 
 class ImageViewer(BaseNode):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, show_raw_image=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.show_raw_image = show_raw_image
         self.image_subscription = self.create_subscription(
             CompressedImage, "/geometry_msgs/image/compressed", self.image_callback, 1
         )
@@ -39,3 +41,12 @@ class ImageViewer(BaseNode):
         np_arr = np.frombuffer(msg.data, np.uint8)
         self.cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         self.cv_image_hist.append(self.cv_image)
+
+        if self.show_raw_image:
+            cv2.imshow("Raw Image", self.cv_image)
+            key = cv2.waitKey(1)
+
+            if key == ord('q'):
+                self.logger.info("Quitting...")
+                cv2.destroyWindow("Raw Image")
+                self.logger.info("Destroyed Raw Image window.")

@@ -11,10 +11,11 @@ from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAge
 from quad_deploy.agents.homi.homi_nav_agent import HomiNavAgent
 from quad_deploy.agents.homi.homi_turn_agent import HomiTurnAgent
 from quad_deploy.agents.stand_agent import StandAgent
+from quad_deploy.nodes.homi.camera_node import CameraNode
 from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
-from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode
-from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode
+from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
+from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
 from quad_deploy.utils.logger import CustomLogger
 from quad_deploy.utils.parse_args import parse_arguments
 
@@ -24,21 +25,22 @@ class HomiRunSDK(BaseManager):
         self,
         wait_robot=True,
         wait_vlm=True,
+        node_name="HomiRunSDK",
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(node_name=node_name, *args, **kwargs)
 
         self.wait_robot = wait_robot
         self.wait_vlm = wait_vlm
 
         self.curr_agent_r: StandAgent = self.agents["stand"]
 
-        self.robot: UnitreeGo2SDKNode = self.nodes["robot"]
+        self.robot: UnitreeGo2Node = self.nodes["robot"]
         self.gripper: GripperNode = self.nodes["gripper"]
 
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
-        self.joystick: JoystickSDKNode = self.nodes["joystick"]
+        self.joystick: JoystickNode = self.nodes["joystick"]
 
     def state_handle(self, switch_to_state):
         if switch_to_state == "emergency":
@@ -73,6 +75,9 @@ class HomiRunSDK(BaseManager):
             self.gripper.start_time = self.timestamp
             self.gripper.handle(grasp=self.vlm.grasp)
 
+        if self.state == "gripper_start" and self.gripper.done:
+            self.vlm.publish_grasp_done(done=True)
+
         if not self.state == "emergency":
             self.curr_agent_r.handle()
 
@@ -106,7 +111,11 @@ class HomiRunSDK(BaseManager):
             return "turn"
 
         if self.state == "turn" and self.vlm.start:
-            return "navigation"
+            if self.wait_vlm:
+                self.logger.log_throttle("Waiting for VLM message", 5)
+                if hasattr(self.vlm, "P_img"):
+                    self.logger.info("VLM message received, the VLM is ready!")
+                    return "navigation"
 
         if self.state == "navigation" and self.vlm.gripper_start:
             return "gripper_start"
@@ -124,19 +133,19 @@ class HomiRunSDK(BaseManager):
                 time.sleep(0.1)
             self.logger.info("Low state message received, the robot is ready to go")
 
-        if self.wait_vlm:
-            self.logger.info("Waiting for VLM message")
-            while not hasattr(self.vlm, "P_img"):
-                time.sleep(0.01)
-            self.logger.info("VLM message received, the VLM is ready!")
-
+        # if self.wait_vlm:
+        #     self.logger.info("Waiting for VLM message")
+        #     while not hasattr(self.vlm, "P_img"):
+        #         time.sleep(0.01)
+        #     self.logger.info("VLM message received, the VLM is ready!")
 
 def main(args=None):
     nodes_dict = {
-        "robot": UnitreeGo2SDKNode,
+        "robot": UnitreeGo2Node,
         "vlm": VLM2BobotBridge,
         "gripper": GripperNode,
-        "joystick": JoystickSDKNode,
+        "joystick": JoystickNode,
+        "camera": CameraNode,
     }
     agents_dict = {
         "stand": StandAgent,
@@ -148,9 +157,9 @@ def main(args=None):
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
     if not args.nosimrun:
-        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode
+        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
 
-        nodes_dict.update({"keyboard": KeyboardSDKNode})
+        nodes_dict.update({"keyboard": KeyboardNode})
 
     rclpy.init()
 

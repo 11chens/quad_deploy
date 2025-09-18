@@ -6,7 +6,7 @@ import time
 
 class Go2Camera:
     def __init__(self, ):
-        ChannelFactoryInitialize(0, 'eth0')
+        # ChannelFactoryInitialize(0, 'eth0')
 
         self.client = VideoClient()  # Create a video client
         self.client.SetTimeout(3.0)
@@ -16,12 +16,12 @@ class Go2Camera:
         code, data = self.client.GetImageSample()
         if code != 0:
             print("Get image sample error. code:", code)
-            return code, None
+            return False, None
 
         # Convert to numpy image
         image_data = np.frombuffer(bytes(data), dtype=np.uint8)
         image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
-        return code, image
+        return True, image
 
 
 if __name__ == "__main__":

@@ -49,6 +49,8 @@ class HomiNavAgent(BaseRLAgent):
     def step(self):
         self.get_observation()
         action = self.infer()
+        if self.manager.state == "gripper_start":
+            action[:3] = 0.0 # stop moving when gripper is working, only keep the pitch command
         self.loco_agent.pre_cmds = np.clip(action, self.cfg.min_action, self.cfg.max_action)
         action, _, _, _ = self.loco_agent.step()
 

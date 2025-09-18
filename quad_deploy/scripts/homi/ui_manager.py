@@ -44,13 +44,18 @@ def main(args=None):
         nodes_dict=nodes_dict,
         custom_logger=CustomLogger,
         node_freq_hz=10,
+        # ImageViewer args
+        show_raw_image=args.show_raw,
     )
 
     homi_robot_node.start_main_loop()
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
+    custom_parameters = [
+        {"name": "--show_raw", "action": "store_true", "default": False, "help": "Show raw image"},
+    ]
+    args = parse_arguments(custom_parameters)
 
     if args.debug:
         import debugpy
