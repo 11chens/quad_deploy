@@ -5,9 +5,18 @@ import numpy as np
 import time
 
 class Go2Camera:
-    def __init__(self, ):
-        # ChannelFactoryInitialize(0, 'eth0')
-
+    def __init__(self, scale: int = 2, channel: bool = False):
+        """ Initialize the Go2 camera interface.
+        Args:
+            scale (int): Scale factor for resizing the image. Default is 2.
+            # default resolution is 1280*720
+            # scale = 2: 640*360
+            # scale = 4: 320*180
+            channel (bool): Whether to initialize the network channel. Default is False.
+        """
+        if channel:
+            ChannelFactoryInitialize(0, 'eth0')
+        self.scale = scale
         self.client = VideoClient()  # Create a video client
         self.client.SetTimeout(3.0)
         self.client.Init()
@@ -21,6 +30,8 @@ class Go2Camera:
         # Convert to numpy image
         image_data = np.frombuffer(bytes(data), dtype=np.uint8)
         image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
+        if self.scale != 1:
+            image = cv2.resize(image, (image.shape[1] // self.scale, image.shape[0] // self.scale))
         return True, image
 
 

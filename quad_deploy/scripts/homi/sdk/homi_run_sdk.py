@@ -75,9 +75,6 @@ class HomiRunSDK(BaseManager):
             self.gripper.start_time = self.timestamp
             self.gripper.handle(grasp=self.vlm.grasp)
 
-        if self.state == "gripper_start" and self.gripper.done:
-            self.vlm.publish_grasp_done(done=True)
-
         if not self.state == "emergency":
             self.curr_agent_r.handle()
 
@@ -121,6 +118,7 @@ class HomiRunSDK(BaseManager):
             return "gripper_start"
 
         if self.state == "gripper_start" and self.gripper.done:
+            self.vlm.publish_grasp_done(True)
             self.logger.info("Gripper done, task completed")
             return "turn"
 
@@ -178,6 +176,7 @@ def main(args=None):
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
         gripper_type=args.gripper,
+        cam_type=args.cam_type,
     )
 
     homi_robot_node.start_main_loop()
@@ -193,6 +192,7 @@ if __name__ == "__main__":
             "default": "two_fingers",
             "help": "Deciding what type of gripper to use (two_fingers, three_fingers, None).",
         },
+        {"name": "--cam_type", "type": str, "default": "go2", "help": "Camera type to use (zed, go2)."},
     ]
     # create sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
 
