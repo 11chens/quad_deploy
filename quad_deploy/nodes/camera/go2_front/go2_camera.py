@@ -21,12 +21,11 @@ class Go2Camera:
         self.client.SetTimeout(3.0)
         self.client.Init()
 
-    def capture_image(self):
+    def capture_image(self, *args, **kwargs):
         code, data = self.client.GetImageSample()
         if code != 0:
             print("Get image sample error. code:", code)
             return False, None
-
         # Convert to numpy image
         image_data = np.frombuffer(bytes(data), dtype=np.uint8)
         image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)

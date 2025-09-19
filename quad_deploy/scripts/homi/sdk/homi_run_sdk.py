@@ -64,8 +64,9 @@ class HomiRunSDK(BaseManager):
         elif switch_to_state == "turn":
             self.curr_agent_r = self.agents["turn"]
             self.curr_agent_r.reset()
+            self.logger.reset()
             self.vlm.reset()
-            self.vlm.publish_ready(ready=True)
+            self.vlm.publish_rl_ready(rl_ready=True)
 
         elif switch_to_state == "navigation":
             self.curr_agent_r = self.agents["nav"]
@@ -96,7 +97,7 @@ class HomiRunSDK(BaseManager):
 
         # ================ Switch RL agent ================ #
         if (self.state == "cold_start" or self.state == "recovery") and self.agents["stand"].done:
-            self.logger.log_throttle("[stand] agent returns done, waiting for press [X] to switch.", 5)
+            self.logger.log_once("[stand] agent returns done, waiting for press [X] to switch.")
             if self.joystick.X:
                 return "human_teleop"
             return None
@@ -107,11 +108,10 @@ class HomiRunSDK(BaseManager):
             )
             return "turn"
 
-        if self.state == "turn" and self.vlm.start:
-            if self.wait_vlm:
-                self.logger.log_throttle("Waiting for VLM message", 5)
+        if self.state == "turn" and self.wait_vlm:
+                self.logger.log_once("Waiting for VLM message: <P_img>")
                 if hasattr(self.vlm, "P_img"):
-                    self.logger.info("VLM message received, the VLM is ready!")
+                    self.logger.info("VLM message <P_img> received, starting navigation!")
                     return "navigation"
 
         if self.state == "navigation" and self.vlm.gripper_start:
@@ -131,11 +131,6 @@ class HomiRunSDK(BaseManager):
                 time.sleep(0.1)
             self.logger.info("Low state message received, the robot is ready to go")
 
-        # if self.wait_vlm:
-        #     self.logger.info("Waiting for VLM message")
-        #     while not hasattr(self.vlm, "P_img"):
-        #         time.sleep(0.01)
-        #     self.logger.info("VLM message received, the VLM is ready!")
 
 def main(args=None):
     nodes_dict = {

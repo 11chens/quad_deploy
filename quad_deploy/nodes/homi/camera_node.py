@@ -38,7 +38,11 @@ class CameraNode(BaseNode):
             # scale down the image
             img = cv2.resize(img, (1280 // 4, 720 // 4))
             self.img_msg.header.stamp = self.manager.get_clock().now().to_msg()
-            self.img_msg.data = np.array(cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])[1]).tobytes()
-            self.img_pub.publish(self.img_msg)
+            _, jpeg_buffer = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            self.img_msg.data = jpeg_buffer.tobytes()
+            self.img_pub.publish(self.img_msg) # publish bytes stream
+            # self.img_msg.data = np.array(cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])[1]).tobytes()
+            # self.img_pub.publish(self.img_msg)
+
         else:
             self.logger.warning("Failed to capture image from camera.")

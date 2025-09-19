@@ -124,7 +124,7 @@ class ZedCamera:
         print("Translation vector T:\n", self.T)
         return True
 
-    def capture_image(self):
+    def capture_image(self, *args, **kwargs):
         """
         Capture a frame, and save the color image.
         """
@@ -140,7 +140,7 @@ class ZedCamera:
             print(f"Image resolution: {self.image_width} x {self.image_height}")
         return True, self.current_image
 
-    def capture_point_cloud(self):
+    def capture_point_cloud(self, *args, **kwargs):
         """
         Capture a frame, and save the point cloud data.
         """
@@ -154,7 +154,7 @@ class ZedCamera:
             print(f"point_cloud resolution: {self.point_cloud_width} x {self.point_cloud_height}")
         return True, self.current_point_cloud
 
-    def capture_depth(self):
+    def capture_depth(self, *args, **kwargs):
         """
         Capture a frame, and save the depth data.
         """

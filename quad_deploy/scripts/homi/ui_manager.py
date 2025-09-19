@@ -23,11 +23,12 @@ class UIManager(BaseManager):
 
         self.tip_node: TipNode = self.nodes["input"]
         self.viewer_node: ImageViewer = self.nodes["viewer"]
+        self.tip_node.publish_ui_ready(True)
 
     def main_loop(self):
         if self.tip_node.inquiry:
             ret = input("Which direction to turn? (left/right): ").strip().upper()
-            self.tip_node.publish_tip(ret)
+            self.tip_node.publish_turn(ret)
             self.tip_node.inquiry = False
 
 

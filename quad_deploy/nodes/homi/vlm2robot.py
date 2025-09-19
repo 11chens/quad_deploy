@@ -11,18 +11,16 @@ class VLM2BobotBridge(BaseNode):
         super().__init__(*args, **kwargs)
         # subscriber
         self.turn_sub = self.create_subscription(String, "/control/turn", self._turn_control_callback, 1)
-        self.start_sub = self.create_subscription(Bool, "/control/start", self._start_control_callback, 1)
         self.grasp_sub = self.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 1)
         self.P_img_sub = self.create_subscription(Point, "/geometry_msgs/p_img", self._perception_callback, 1)
         self.turn = ""
-        self.start = False
         self.grasp = False
         self.gripper_start = False
 
         # publisher
-        self.ready_pub = self.create_publisher(Bool, "/control/ready", 1)
-        self.ready_msg = Bool()
-        self.ready = False
+        self.rl_ready_pub = self.create_publisher(Bool, "/control/rl_ready", 1)
+        self.rl_ready_msg = Bool()
+        self.rl_ready = False
         self.turn_done_pub = self.create_publisher(Bool, "/control/turn_done", 1)
         self.turn_done_msg = Bool()
         self.turn_done = False
@@ -33,27 +31,22 @@ class VLM2BobotBridge(BaseNode):
         self.target_yaw = 0.0
         self.initial_yaw = 0.0
 
-    def _start_control_callback(self, msg: Bool):
-        start = msg.data
-        self.logger.info(f"""[Sub] start: {start}.""")
-        self.start = start
-
     def _grasp_control_callback(self, msg: Bool):
         grasp = msg.data
         self.logger.info(f"""[Sub] grasp: {grasp}.""")
         self.grasp = grasp
         self.gripper_start = True
 
-    def _turn_control_callback(self, msg: Bool):
+    def _turn_control_callback(self, msg: String):
         turn = msg.data
         self.logger.info(f"""[Sub] turn: {turn}.""")
         self.turn = turn
 
         # -90 degree (-1)
-        if self.turn == "turn right":
+        if self.turn.lower() == "right":
             self.target_yaw = -1.57
         # +90 degree (1)
-        elif self.turn == "turn left":
+        elif self.turn.lower() == "left":
             self.target_yaw = 1.57
         else:
             self.target_yaw = 0.0
@@ -66,12 +59,12 @@ class VLM2BobotBridge(BaseNode):
     def _perception_callback(self, msg: Point):
         self.P_img = [msg.x, msg.y, msg.z]  # (u, v, depth)
 
-    def publish_ready(self, ready):
-        if not self.ready and ready:  # False -> True
-            self.logger.info(f"""[Pub] ready: {ready}.""")
-            self.ready = ready
-            self.ready_msg.data = ready
-            self.ready_pub.publish(self.ready_msg)
+    def publish_rl_ready(self, rl_ready):
+        if not self.rl_ready and rl_ready:  # False -> True
+            self.logger.info(f"""[Pub] rl_ready: {rl_ready}.""")
+            self.rl_ready = rl_ready
+            self.rl_ready_msg.data = rl_ready
+            self.rl_ready_pub.publish(self.rl_ready_msg)
 
     def publish_turn_done(self, turn_done):
         if not self.turn_done and turn_done:  # False -> True
@@ -91,7 +84,7 @@ class VLM2BobotBridge(BaseNode):
         self.start = False
         self.grasp = False
         self.turn = ""
-        self.ready = False
+        self.rl_ready = False
         self.turn_done = False
         self.grasp_done = False
         self.gripper_start = False

@@ -54,7 +54,7 @@ class CustomLogger:
                 colorize=False,
             )
 
-    def log_once(self, message: str, level: str):
+    def log_once(self, message: str, level: str = "INFO"):
         """
         Log a message only once.
 
