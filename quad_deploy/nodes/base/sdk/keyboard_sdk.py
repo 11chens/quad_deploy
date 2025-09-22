@@ -8,12 +8,19 @@ from quad_deploy.utils.button_code import WirelessButtons
 
 
 class KeyboardSDKNode(BaseNode):
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self, keyboard_topic: str = "/keydown", joy_stick_topic: str = "rt/wirelesscontroller", *args, **kwargs
+    ):
+        """Class to handle keyboard inputs and publish them as joystick commands (used for simulation in Mujoco).
+        Args:
+            keyboard_topic (str): ROS2 topic to subscribe for keyboard inputs (get from ros2 keyboard package).
+            joy_stick_topic (str): Topic to publish joystick commands (get from unitree sdk).
+        """
         super().__init__(*args, **kwargs)
 
         self.WirelessButtons = WirelessButtons()
-        self.keydown_sub = self.create_subscription(Key, "/keydown", self._keydown_callback, 1)
-        self.joy_stick_topic = "rt/wirelesscontroller"
+        self.keydown_sub = self.create_subscription(Key, keyboard_topic, self._keydown_callback, 1)
+        self.joy_stick_topic = joy_stick_topic
         self.joy_stick_pub = ChannelPublisher(self.joy_stick_topic, WirelessController_)
         self.joy_stick_pub.Init()
         self.joy_stick_msg = unitree_go_msg_dds__WirelessController_()

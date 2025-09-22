@@ -6,10 +6,6 @@ import pyzed.sl as sl
 
 
 class ZedCamera:
-    """
-    Encapsulates ZED camera operations: initialization, reading intrinsics, setting extrinsics, capturing photos and getting depth.
-    """
-
     # Resolution mode mapping
     RESOLUTION_MODES = {"HD720": sl.RESOLUTION.HD720, "VGA": sl.RESOLUTION.VGA}  # 1280x720  # 672x376
 
@@ -20,7 +16,17 @@ class ZedCamera:
         "NEURAL_PLUS": sl.DEPTH_MODE.NEURAL_PLUS,
     }
 
-    def __init__(self, resolution_mode="HD720", depth_mode="NEURAL"):
+    def __init__(self, resolution_mode="HD720", depth_mode="NEURAL", scale: int = 2, *args, **kwargs):
+        """Class to interface with Zed Mini camera using pyzed.sl SDK.
+        Args:
+            resolution_mode (str): Resolution mode for the camera ("HD720" or "VGA").
+            depth_mode (str): Depth mode for the camera ("NEURAL_LIGHT", "NEURAL", or "NEURAL_PLUS").
+            scale (int): Scale factor for resizing the image.
+                - scale = 1: original resolution (1280x720)
+                - scale = 2: half resolution (640x360)
+                - scale = 4: quarter resolution (320x180)
+                - scale = 8: eighth resolution (160x90)
+        """
         self.zed = None
         self.fx = None
         self.fy = None
@@ -49,6 +55,7 @@ class ZedCamera:
         self.point_cloud_height = None
         self.depth_max = 10.0
         self.depth_min = 0.1
+        self.scale = scale  # scale down the image for faster processing
         self.initialize_camera(resolution_mode, depth_mode)
         self.get_intrinsics()
 
@@ -131,7 +138,9 @@ class ZedCamera:
         if self.zed.grab(self.runtime_parameters) != sl.ERROR_CODE.SUCCESS:
             print("Error: Failed to capture a frame.")
             return False, None
-        self.zed.retrieve_image(self.image, sl.VIEW.LEFT)
+        self.zed.retrieve_image(
+            self.image, sl.VIEW.LEFT, sl.MEM.CPU, sl.Resolution(1280 // self.scale, 720 // self.scale)
+        )
         raw_image = self.image.get_data()  # BGRA format
         self.current_image = cv2.cvtColor(raw_image, cv2.COLOR_BGRA2BGR)  # BGR format
         if self.image_width is None or self.image_height is None:
@@ -146,7 +155,9 @@ class ZedCamera:
         """
 
         # Get depth point cloud
-        self.zed.retrieve_measure(self.point_cloud, sl.MEASURE.XYZRGBA)
+        self.zed.retrieve_measure(
+            self.point_cloud, sl.MEASURE.XYZRGBA, sl.MEM.CPU, sl.Resolution(1280 // self.scale, 720 // self.scale)
+        )
         self.current_point_cloud = self.point_cloud
         if self.point_cloud_width is None or self.point_cloud_height is None:
             self.point_cloud_width = self.point_cloud.get_width()
@@ -162,7 +173,9 @@ class ZedCamera:
             print("Error: Failed to capture a frame.")
             return False, None
         # Get depth data
-        self.zed.retrieve_measure(self.image_depth, sl.MEASURE.DEPTH)
+        self.zed.retrieve_measure(
+            self.image_depth, sl.MEASURE.DEPTH, sl.MEM.CPU, sl.Resolution(1280 // self.scale, 720 // self.scale)
+        )
         self.current_image_depth = self.image_depth
         if self.image_depth_width is None or self.image_depth_height is None:
             self.image_depth_width = self.image_depth.get_width()

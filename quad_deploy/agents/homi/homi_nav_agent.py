@@ -29,10 +29,9 @@ class HomiNavAgent(BaseRLAgent):
             (self.last_action, 1.0),  # dim 4
         ]
 
-    def parse_obs_config(self, cfg):
-        super().parse_obs_config(cfg)
+    def parse_config(self):
+        super().parse_config()
         self.num_actions = self.cfg.num_actions
-        self.last_action = np.zeros(self.num_actions, dtype=np.float32)
 
     def load_model(self):
         onnx_path = os.path.join(self.logdir, "nav_model", "model.onnx")
@@ -50,7 +49,7 @@ class HomiNavAgent(BaseRLAgent):
         self.get_observation()
         action = self.infer()
         if self.manager.state == "gripper_start":
-            action[:3] = 0.0 # stop moving when gripper is working, only keep the pitch command
+            action[:3] = 0.0  # stop moving when gripper is working, only keep the pitch command
         self.loco_agent.pre_cmds = np.clip(action, self.cfg.min_action, self.cfg.max_action)
         action, _, _, _ = self.loco_agent.step()
 

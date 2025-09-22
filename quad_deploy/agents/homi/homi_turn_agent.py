@@ -25,8 +25,8 @@ class HomiTurnAgent(BaseRLAgent):
         self.target_yaw = 0.0
         self.initial_yaw = 0.0
 
-    def parse_obs_config(self, cfg):
-        super().parse_obs_config(cfg)
+    def parse_config(self):
+        super().parse_config()
 
     def infer(self):
         yaw_diff = warp2pi(self.target_yaw - self.curr_yaw)

@@ -1,12 +1,14 @@
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-from unitree_sdk2py.go2.video.video_client import VideoClient
-import cv2
-import numpy as np
 import time
 
+import cv2
+import numpy as np
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from unitree_sdk2py.go2.video.video_client import VideoClient
+
+
 class Go2Camera:
-    def __init__(self, scale: int = 2, channel: bool = False):
-        """ Initialize the Go2 camera interface.
+    def __init__(self, scale: int = 2, channel: bool = False, *args, **kwargs):
+        """Initialize the Go2 camera interface.
         Args:
             scale (int): Scale factor for resizing the image. Default is 2.
             # default resolution is 1280*720
@@ -15,7 +17,7 @@ class Go2Camera:
             channel (bool): Whether to initialize the network channel. Default is False.
         """
         if channel:
-            ChannelFactoryInitialize(0, 'eth0')
+            ChannelFactoryInitialize(0, "eth0")
         self.scale = scale
         self.client = VideoClient()  # Create a video client
         self.client.SetTimeout(3.0)

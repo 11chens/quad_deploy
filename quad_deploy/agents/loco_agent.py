@@ -30,8 +30,8 @@ class LocoAgent(BaseRLAgent):
             (self.robot.last_action, 1.0),  # dim 12
         ]
 
-    def parse_obs_config(self, cfg):
-        super().parse_obs_config(cfg)
+    def parse_config(self):
+        super().parse_config()
 
     def infer(self):
         _actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)

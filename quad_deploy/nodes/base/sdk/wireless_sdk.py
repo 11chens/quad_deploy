@@ -8,12 +8,12 @@ from quad_deploy.utils.button_code import WirelessButtons
 class JoystickSDKNode(BaseNode):
     """Class to handle Unitree go2 joystick inputs for controlling the robot."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, joy_stick_topic: str = "rt/wirelesscontroller", *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._init_keys()
         self.WirelessButtons = WirelessButtons
-        self.joy_stick_topic = "rt/wirelesscontroller"
+        self.joy_stick_topic = joy_stick_topic
         self.joy_stick_sub = ChannelSubscriber(self.joy_stick_topic, WirelessController_)
         self.joy_stick_sub.Init(self._joy_stick_callback, 1)
 

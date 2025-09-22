@@ -5,12 +5,12 @@ import time
 import numpy as np
 import rclpy
 from ros_base.manager.base_manager import BaseManager
+from ros_base.utils.logger import CustomLogger
 
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
-from quad_deploy.utils.logger import CustomLogger
+from quad_deploy.nodes.homi.vlm2ui import VLM2UIBridge
 from quad_deploy.utils.parse_args import parse_arguments
-from quad_deploy.nodes.homi.img_viewer_node import ImageViewer
-from quad_deploy.nodes.homi.tip_node import TipNode
+
 
 class UIManager(BaseManager):
     def __init__(
@@ -19,23 +19,25 @@ class UIManager(BaseManager):
         *args,
         **kwargs,
     ):
+        """Main class to manage the UI interactions for the Homi robot using VLM. This manager is executed on the PC generally.
+        Args:
+            node_name (str): Name of the ROS2 node.
+        """
         super().__init__(node_name=node_name, *args, **kwargs)
 
-        self.tip_node: TipNode = self.nodes["input"]
-        self.viewer_node: ImageViewer = self.nodes["viewer"]
-        self.tip_node.publish_ui_ready(True)
+        self.vlm: VLM2UIBridge = self.nodes["vlm"]
+        self.vlm.publish_ui_ready(True)
 
     def main_loop(self):
-        if self.tip_node.inquiry:
+        if self.vlm.inquiry:
             ret = input("Which direction to turn? (left/right): ").strip().upper()
-            self.tip_node.publish_turn(ret)
-            self.tip_node.inquiry = False
+            self.vlm.publish_turn(ret)
+            self.vlm.inquiry = False
 
 
 def main(args=None):
     nodes_dict = {
-        "viewer": ImageViewer,
-        "input": TipNode,
+        "vlm": VLM2UIBridge,
     }
 
     rclpy.init()

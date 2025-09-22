@@ -11,6 +11,9 @@ from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 
 class GripperNode(BaseNode):
     def __init__(self, *args, **kwargs):
+        """Node to control the gripper via serial communication.
+        Supported gripper types: "two_fingers", "three_fingers", or "None" (sim serial port).
+        """
         super().__init__(*args, **kwargs)
 
         # Configure serial port

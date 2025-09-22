@@ -5,29 +5,36 @@ import time
 import numpy as np
 import rclpy
 from ros_base.manager.base_manager import BaseManager
+from ros_base.utils.logger import CustomLogger
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
 from quad_deploy.agents.homi.homi_nav_agent import HomiNavAgent
 from quad_deploy.agents.homi.homi_turn_agent import HomiTurnAgent
 from quad_deploy.agents.stand_agent import StandAgent
-from quad_deploy.nodes.homi.camera_node import CameraNode
+from quad_deploy.nodes.base.camera.camera_node import CameraNode
+from quad_deploy.nodes.base.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
+from quad_deploy.nodes.base.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
 from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
-from quad_deploy.nodes.ros.robot_go2_ros import UnitreeGo2ROS as UnitreeGo2Node
-from quad_deploy.nodes.ros.wireless_ros import JoystickRosNode as JoystickNode
-from quad_deploy.utils.logger import CustomLogger
 from quad_deploy.utils.parse_args import parse_arguments
 
 
-class HomiRunROS(BaseManager):
+class HomiRunSDK(BaseManager):
     def __init__(
         self,
         wait_robot=True,
         wait_vlm=True,
-        node_name="HomiRunROS",
+        node_name="HomiRunSDK",
         *args,
         **kwargs,
     ):
+        """Main class to run the Homi robot for manipulation tasks using VLM and joystick.
+        Args:
+            wait_robot (bool): Whether to wait for the robot to return lowstate before starting.
+            wait_vlm (bool): Whether to wait for VLM to return highstate before starting navigation.
+            node_name (str): Name of the ROS2 node.
+        """
         super().__init__(node_name=node_name, *args, **kwargs)
 
         self.wait_robot = wait_robot
@@ -40,6 +47,52 @@ class HomiRunROS(BaseManager):
 
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
         self.joystick: JoystickNode = self.nodes["joystick"]
+
+    def get_state_switch(self):
+        """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
+        Return None for not switching, or the name of the agent to switch to.
+        """
+        if self.joystick.L2:
+            self.logger.warning("Robot will shut down motors.")
+            return "emergency"
+
+        if self.joystick.L1 and self.state == "emergency":
+            self.logger.info("Robot will recovery.")
+            return "recovery"
+
+        if self.joystick.R2:
+            self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
+            return "human_teleop"
+
+        # ================ Switch RL agent ================ #
+        if (self.state == "cold_start" or self.state == "recovery") and self.agents["stand"].done:
+            self.logger.log_once("[stand] agent returns done, waiting for press [X] to switch.")
+            if self.joystick.X:
+                return "human_teleop"
+            return None
+
+        if self.state == "human_teleop" and self.joystick.R1:
+            self.logger.important(
+                "[loco] The autonomous control is [ON]. Please pay attention to the safety of the robot."
+            )
+            return "turn"
+
+        if self.state == "turn" and self.wait_vlm:
+            self.logger.log_once("Waiting for VLM message: <P_img>")
+            if self.vlm.P_img is not None:
+                self.logger.info("VLM message <P_img> received, starting navigation!")
+                return "navigation"
+
+        if self.state == "navigation" and self.vlm.grasp is not None:
+            return "gripper_start"
+
+        if self.state == "gripper_start" and self.gripper.done:
+            return "gripper_done"
+
+        if self.state == "gripper_done" and self.vlm.vlm_done:
+            return "turn"
+
+        return None
 
     def state_handle(self, switch_to_state):
         if switch_to_state == "emergency":
@@ -61,10 +114,11 @@ class HomiRunROS(BaseManager):
             self.curr_agent_r.reset()
 
         elif switch_to_state == "turn":
+            self.logger.reset()
+            self.vlm.reset()
             self.curr_agent_r = self.agents["turn"]
             self.curr_agent_r.reset()
-            self.vlm.reset()
-            self.vlm.publish_ready(ready=True)
+            self.vlm.publish_rl_ready(rl_ready=True)
 
         elif switch_to_state == "navigation":
             self.curr_agent_r = self.agents["nav"]
@@ -74,56 +128,11 @@ class HomiRunROS(BaseManager):
             self.gripper.start_time = self.timestamp
             self.gripper.handle(grasp=self.vlm.grasp)
 
-        if self.state == "gripper_start" and self.gripper.done:
-            self.vlm.publish_grasp_done(done=True)
+        elif switch_to_state == "gripper_done":
+            self.vlm.publish_grasp_done(grasp_done=True)
 
         if not self.state == "emergency":
             self.curr_agent_r.handle()
-
-    def get_state_switch(self):
-        """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
-        Return None for not switching, or the name of the agent to switch to.
-        """
-        if self.joystick.L2:
-            self.logger.warning("Robot will shut down motors.")
-            return "emergency"
-
-        if self.joystick.L1 and self.state == "emergency":
-            self.logger.info("Robot will recovery.")
-            return "recovery"
-
-        if self.joystick.R2:
-            self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
-            return "human_teleop"
-
-        # ================ Switch RL agent ================ #
-        if (self.state == "cold_start" or self.state == "recovery") and self.agents["stand"].done:
-            self.logger.log_throttle("[stand] agent returns done, waiting for press [X] to switch.", 5)
-            if self.joystick.X:
-                return "human_teleop"
-            return None
-
-        if self.state == "human_teleop" and self.joystick.R1:
-            self.logger.important(
-                "[loco] The autonomous control is [ON]. Please pay attention to the safety of the robot."
-            )
-            return "turn"
-
-        if self.state == "turn" and self.vlm.start:
-            if self.wait_vlm:
-                self.logger.log_throttle("Waiting for VLM message", 5)
-                if hasattr(self.vlm, "P_img"):
-                    self.logger.info("VLM message received, the VLM is ready!")
-                    return "navigation"
-
-        if self.state == "navigation" and self.vlm.gripper_start:
-            return "gripper_start"
-
-        if self.state == "gripper_start" and self.gripper.done:
-            self.logger.info("Gripper done, task completed")
-            return "turn"
-
-        return None
 
     def handshake(self):
         if self.wait_robot:
@@ -132,11 +141,6 @@ class HomiRunROS(BaseManager):
                 time.sleep(0.1)
             self.logger.info("Low state message received, the robot is ready to go")
 
-        # if self.wait_vlm:
-        #     self.logger.info("Waiting for VLM message")
-        #     while not hasattr(self.vlm, "P_img"):
-        #         time.sleep(0.01)
-        #     self.logger.info("VLM message received, the VLM is ready!")
 
 def main(args=None):
     nodes_dict = {
@@ -156,13 +160,15 @@ def main(args=None):
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
     if not args.nosimrun:
-        from quad_deploy.nodes.ros.keyboard_ros import KeyboardRos as KeyboardNode
+        from quad_deploy.nodes.base.sdk.keyboard_sdk import (
+            KeyboardSDKNode as KeyboardNode,
+        )
 
         nodes_dict.update({"keyboard": KeyboardNode})
 
     rclpy.init()
 
-    homi_robot_node = HomiRunROS(
+    homi_robot_node = HomiRunSDK(
         # ros_base args
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
@@ -177,7 +183,7 @@ def main(args=None):
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
         gripper_type=args.gripper,
-        cam_type="zed",  # "zed" or "go2"
+        cam_type=args.cam_type,
     )
 
     homi_robot_node.start_main_loop()
@@ -186,13 +192,14 @@ def main(args=None):
 if __name__ == "__main__":
     custom_parameters = [
         {"name": "--wait_robot", "action": "store_true", "default": True, "help": "Waiting for robot return lowstate."},
-        {"name": "--wait_vlm", "action": "store_true", "default": False, "help": "Waiting for VLM return highstate."},
+        {"name": "--wait_vlm", "action": "store_true", "default": True, "help": "Waiting for VLM return highstate."},
         {
             "name": "--gripper",
             "type": str,
             "default": "two_fingers",
             "help": "Deciding what type of gripper to use (two_fingers, three_fingers, None).",
         },
+        {"name": "--cam_type", "type": str, "default": "zed", "help": "Camera type to use (zed, go2)."},
     ]
     # create sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
 
@@ -207,5 +214,10 @@ if __name__ == "__main__":
         debugpy.listen(ip_address)
         debugpy.wait_for_client()
         debugpy.breakpoint()
+
+    if not args.nosimrun:
+        ChannelFactoryInitialize(1, "lo")
+    else:
+        ChannelFactoryInitialize(0, "eth0")
 
     main(args=args)
