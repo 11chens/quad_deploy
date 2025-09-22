@@ -1,5 +1,6 @@
-from std_msgs.msg import String, Bool
 from ros_base.node.base_node import BaseNode
+from std_msgs.msg import Bool, String
+
 
 class TipNode(BaseNode):
     def __init__(self, *args, **kwargs):
@@ -9,18 +10,23 @@ class TipNode(BaseNode):
         self.inquiry_sub = self.create_subscription(Bool, "/control/inquiry", self.inquiry_callback, 1)
 
         self.ui_ready_msg = Bool()
+        self.ui_ready = False
         self.turn_msg = String()
         self.inquiry = False
-    
+        self.turn = ""
+
     def publish_ui_ready(self, ui_ready: bool):
-        self.ui_ready_msg.data = ui_ready
-        self.ui_ready_pub.publish(self.ui_ready_msg)
-        self.logger.info(f"""[Pub] ui_ready: {ui_ready}.""")
+        if ui_ready != self.ui_ready:
+            self.ui_ready = ui_ready
+            self.ui_ready_msg.data = self.ui_ready
+            self.ui_ready_pub.publish(self.ui_ready_msg)
+            self.logger.info(f"""[Pub] ui_ready: {self.ui_ready}.""")
 
     def publish_turn(self, turn: str):
-        self.turn_msg.data = turn
+        self.turn = turn
+        self.turn_msg.data = self.turn
         self.turn_pub.publish(self.turn_msg)
-        self.logger.info(f"""[Pub] turn: {turn}.""")
+        self.logger.info(f"""[Pub] turn: {self.turn}.""")
 
     def inquiry_callback(self, msg: Bool):
         inquiry = msg.data

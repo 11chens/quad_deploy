@@ -19,8 +19,8 @@ class CircularBuffer:
             #     self._buffer = np.zeros((self._length,) + tuple(value.shape), dtype=np.float32)
             if type(value) is np.ndarray:
                 self._buffer = np.zeros((self._length,) + value.shape, dtype=value.dtype)
-            else:
-                self._buffer = np.zeros((self._length,) + tuple(value.shape), dtype=np.float32)
+            else:  # float
+                self._buffer = np.zeros((self._length,) + tuple([1]), dtype=np.float32)
         if self._num_pushes == 0:
             self._buffer[:] = value
         else:

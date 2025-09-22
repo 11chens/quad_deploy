@@ -44,11 +44,11 @@ class GripperNode(BaseNode):
         try:
             # Ensure serial port is open
             if self.serial_port.is_open:
-                self.logger.info(f"Connected to {self.serial_port.name}")
+                # self.logger.info(f"Connected to {self.serial_port.name}")
 
                 # Send hex data
                 self.serial_port.write(hex_data)
-                self.logger.info(f"Sent hex data: {hex_data.hex(' ')}")
+                # self.logger.info(f"Sent hex data: {hex_data.hex(' ')}")
 
         except serial.SerialException as e:
             self.logger.error(f"Serial port error: {e}")

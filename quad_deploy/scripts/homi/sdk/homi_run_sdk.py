@@ -42,43 +42,6 @@ class HomiRunSDK(BaseManager):
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
         self.joystick: JoystickNode = self.nodes["joystick"]
 
-    def state_handle(self, switch_to_state):
-        if switch_to_state == "emergency":
-            self.robot.turn_off_motors()
-
-        elif switch_to_state == "recovery":
-            self.curr_agent_r = self.agents["stand"]
-            self.curr_agent_r.reset()
-            self.logger.reset()
-            self.timestamp = 0
-            self.robot.init_motors()
-
-        elif switch_to_state == "cold_start":
-            self.curr_agent_r = self.agents["stand"]
-            self.curr_agent_r.reset()
-
-        elif switch_to_state == "human_teleop":
-            self.curr_agent_r = self.agents["loco"]
-            self.curr_agent_r.reset()
-
-        elif switch_to_state == "turn":
-            self.curr_agent_r = self.agents["turn"]
-            self.curr_agent_r.reset()
-            self.logger.reset()
-            self.vlm.reset()
-            self.vlm.publish_rl_ready(rl_ready=True)
-
-        elif switch_to_state == "navigation":
-            self.curr_agent_r = self.agents["nav"]
-            self.curr_agent_r.reset()
-
-        elif switch_to_state == "gripper_start":
-            self.gripper.start_time = self.timestamp
-            self.gripper.handle(grasp=self.vlm.grasp)
-
-        if not self.state == "emergency":
-            self.curr_agent_r.handle()
-
     def get_state_switch(self):
         """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
@@ -109,20 +72,61 @@ class HomiRunSDK(BaseManager):
             return "turn"
 
         if self.state == "turn" and self.wait_vlm:
-                self.logger.log_once("Waiting for VLM message: <P_img>")
-                if hasattr(self.vlm, "P_img"):
-                    self.logger.info("VLM message <P_img> received, starting navigation!")
-                    return "navigation"
+            self.logger.log_once("Waiting for VLM message: <P_img>")
+            if self.vlm.P_img is not None:
+                self.logger.info("VLM message <P_img> received, starting navigation!")
+                return "navigation"
 
-        if self.state == "navigation" and self.vlm.gripper_start:
+        if self.state == "navigation" and self.vlm.grasp is not None:
             return "gripper_start"
 
         if self.state == "gripper_start" and self.gripper.done:
-            self.vlm.publish_grasp_done(True)
-            self.logger.info("Gripper done, task completed")
+            return "gripper_done"
+
+        if self.state == "gripper_done" and self.vlm.vlm_done:
             return "turn"
 
         return None
+
+    def state_handle(self, switch_to_state):
+        if switch_to_state == "emergency":
+            self.robot.turn_off_motors()
+
+        elif switch_to_state == "recovery":
+            self.curr_agent_r = self.agents["stand"]
+            self.curr_agent_r.reset()
+            self.logger.reset()
+            self.timestamp = 0
+            self.robot.init_motors()
+
+        elif switch_to_state == "cold_start":
+            self.curr_agent_r = self.agents["stand"]
+            self.curr_agent_r.reset()
+
+        elif switch_to_state == "human_teleop":
+            self.curr_agent_r = self.agents["loco"]
+            self.curr_agent_r.reset()
+
+        elif switch_to_state == "turn":
+            self.logger.reset()
+            self.vlm.reset()
+            self.curr_agent_r = self.agents["turn"]
+            self.curr_agent_r.reset()
+            self.vlm.publish_rl_ready(rl_ready=True)
+
+        elif switch_to_state == "navigation":
+            self.curr_agent_r = self.agents["nav"]
+            self.curr_agent_r.reset()
+
+        elif switch_to_state == "gripper_start":
+            self.gripper.start_time = self.timestamp
+            self.gripper.handle(grasp=self.vlm.grasp)
+
+        elif switch_to_state == "gripper_done":
+            self.vlm.publish_grasp_done(grasp_done=True)
+
+        if not self.state == "emergency":
+            self.curr_agent_r.handle()
 
     def handshake(self):
         if self.wait_robot:
@@ -180,14 +184,14 @@ def main(args=None):
 if __name__ == "__main__":
     custom_parameters = [
         {"name": "--wait_robot", "action": "store_true", "default": True, "help": "Waiting for robot return lowstate."},
-        {"name": "--wait_vlm", "action": "store_true", "default": False, "help": "Waiting for VLM return highstate."},
+        {"name": "--wait_vlm", "action": "store_true", "default": True, "help": "Waiting for VLM return highstate."},
         {
             "name": "--gripper",
             "type": str,
             "default": "two_fingers",
             "help": "Deciding what type of gripper to use (two_fingers, three_fingers, None).",
         },
-        {"name": "--cam_type", "type": str, "default": "go2", "help": "Camera type to use (zed, go2)."},
+        {"name": "--cam_type", "type": str, "default": "zed", "help": "Camera type to use (zed, go2)."},
     ]
     # create sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
 

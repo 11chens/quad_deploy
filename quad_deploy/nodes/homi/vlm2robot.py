@@ -13,9 +13,12 @@ class VLM2BobotBridge(BaseNode):
         self.turn_sub = self.create_subscription(String, "/control/turn", self._turn_control_callback, 1)
         self.grasp_sub = self.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 1)
         self.P_img_sub = self.create_subscription(Point, "/geometry_msgs/p_img", self._perception_callback, 1)
+        self.vlm_done_sub = self.create_subscription(Bool, "/control/vlm_done", self._vlm_done_callback, 1)
+
         self.turn = ""
-        self.grasp = False
-        self.gripper_start = False
+        self.grasp = None
+        self.P_img = None  # (u, v, depth)
+        self.vlm_done = False
 
         # publisher
         self.rl_ready_pub = self.create_publisher(Bool, "/control/rl_ready", 1)
@@ -35,7 +38,6 @@ class VLM2BobotBridge(BaseNode):
         grasp = msg.data
         self.logger.info(f"""[Sub] grasp: {grasp}.""")
         self.grasp = grasp
-        self.gripper_start = True
 
     def _turn_control_callback(self, msg: String):
         turn = msg.data
@@ -59,34 +61,40 @@ class VLM2BobotBridge(BaseNode):
     def _perception_callback(self, msg: Point):
         self.P_img = [msg.x, msg.y, msg.z]  # (u, v, depth)
 
-    def publish_rl_ready(self, rl_ready):
+    def _vlm_done_callback(self, msg: Bool):
+        vlm_done = msg.data
+        self.vlm_done = vlm_done
+        self.logger.info(f"""[Sub] vlm_done: {vlm_done}.""")
+
+    def publish_rl_ready(self, rl_ready: bool):
         if not self.rl_ready and rl_ready:  # False -> True
-            self.logger.info(f"""[Pub] rl_ready: {rl_ready}.""")
             self.rl_ready = rl_ready
             self.rl_ready_msg.data = rl_ready
             self.rl_ready_pub.publish(self.rl_ready_msg)
+            self.logger.info(f"""[Pub] rl_ready: {rl_ready}.""")
 
-    def publish_turn_done(self, turn_done):
+    def publish_turn_done(self, turn_done: bool):
         if not self.turn_done and turn_done:  # False -> True
-            self.logger.info(f"""[Pub] turn_done: {turn_done}.""")
             self.turn_done = turn_done
             self.turn_done_msg.data = turn_done
             self.turn_done_pub.publish(self.turn_done_msg)
+            self.logger.info(f"""[Pub] turn_done: {turn_done}.""")
 
-    def publish_grasp_done(self, grasp_done):
+    def publish_grasp_done(self, grasp_done: bool):
         if not self.grasp_done and grasp_done:  # False -> True
-            self.logger.info(f"""[Pub] grasp_done: {grasp_done}.""")
             self.grasp_done = grasp_done
             self.grasp_done_msg.data = grasp_done
             self.grasp_done_pub.publish(self.grasp_done_msg)
+            self.logger.info(f"""[Pub] grasp_done: {grasp_done}.""")
 
     def reset(self):
         self.start = False
-        self.grasp = False
+        self.grasp = None
         self.turn = ""
         self.rl_ready = False
         self.turn_done = False
         self.grasp_done = False
-        self.gripper_start = False
+        self.vlm_done = False
+        self.P_img = None
         self.target_yaw = 0.0
         self.initial_yaw = self.nodes["robot"].euler_rpy[2]
