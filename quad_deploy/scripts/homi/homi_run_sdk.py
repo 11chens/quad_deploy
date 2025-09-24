@@ -148,7 +148,7 @@ def main(args=None):
         "vlm": VLM2BobotBridge,
         "gripper": GripperNode,
         "joystick": JoystickNode,
-        "camera": CameraNode,
+        # "camera": CameraNode, # recommended to run camera node in separate process, rather than in the daemon ros thread
     }
     agents_dict = {
         "stand": StandAgent,
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     if args.debug:
         import debugpy
 
-        ip_address = ("0.0.0.0", 7890)
+        ip_address = ("0.0.0.0", 7777)
         print(f"Process: {sys.argv[:]}")
         print(f"Is waiting for attach at {ip_address[0]}:{ip_address[1]}", flush=True)
         debugpy.listen(ip_address)
