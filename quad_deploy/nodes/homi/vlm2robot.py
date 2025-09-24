@@ -1,6 +1,6 @@
 from geometry_msgs.msg import Point
 from rclpy.node import Node
-from ros_base.node.base_node import BaseNode
+from ros_base.nodes.base_node import BaseNode
 from std_msgs.msg import Bool, String
 
 

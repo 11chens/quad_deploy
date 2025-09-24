@@ -2,11 +2,11 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 
 import numpy as np
-from ros_base.agent.base_agent import BaseAgent
+from ros_base.agents.base_agent import BaseAgent
+from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode
 
 from quad_deploy.config.base_agent_cfg import BaseAgentCfg
-from quad_deploy.nodes.base.sdk.robot_go2_sdk import UnitreeGo2SDKNode
-from quad_deploy.nodes.base.sdk.wireless_sdk import JoystickSDKNode
+from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode
 from quad_deploy.utils.math_utils import CircularBuffer
 
 

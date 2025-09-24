@@ -5,6 +5,8 @@ import time
 import numpy as np
 import rclpy
 from ros_base.manager.base_manager import BaseManager
+from ros_base.nodes.camera.camera_node import CameraNode
+from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode as JoystickNode
 from ros_base.utils.logger import CustomLogger
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
@@ -12,11 +14,9 @@ from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAge
 from quad_deploy.agents.homi.homi_nav_agent import HomiNavAgent
 from quad_deploy.agents.homi.homi_turn_agent import HomiTurnAgent
 from quad_deploy.agents.stand_agent import StandAgent
-from quad_deploy.nodes.base.camera.camera_node import CameraNode
-from quad_deploy.nodes.base.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
-from quad_deploy.nodes.base.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
 from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
+from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
 from quad_deploy.utils.parse_args import parse_arguments
 
 
@@ -160,9 +160,7 @@ def main(args=None):
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
     if not args.nosimrun:
-        from quad_deploy.nodes.base.sdk.keyboard_sdk import (
-            KeyboardSDKNode as KeyboardNode,
-        )
+        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
 
         nodes_dict.update({"keyboard": KeyboardNode})
 

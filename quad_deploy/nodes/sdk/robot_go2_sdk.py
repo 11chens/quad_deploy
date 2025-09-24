@@ -3,7 +3,7 @@ import sys
 import time
 
 import numpy as np
-from ros_base.node.base_node import BaseNode
+from ros_base.nodes.base_node import BaseNode
 from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import (
     MotionSwitcherClient,
 )

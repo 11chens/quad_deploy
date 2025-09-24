@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 import serial
-from ros_base.node.base_node import BaseNode
+from ros_base.nodes.base_node import BaseNode
 
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 

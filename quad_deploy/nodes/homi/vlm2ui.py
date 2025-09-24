@@ -2,7 +2,7 @@ import time
 
 import cv2
 import numpy as np
-from ros_base.node.base_node import BaseNode
+from ros_base.nodes.base_node import BaseNode
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Bool, String
 

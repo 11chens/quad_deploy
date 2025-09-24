@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 import onnxruntime as ort
-from ros_base.agent.base_agent import BaseAgent
+from ros_base.agents.base_agent import BaseAgent
 
 from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
