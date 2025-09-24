@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 import rclpy
-from ros_base.manager.base_manager import BaseManager
+from ros_base.manager.base_manager import BaseManager, register_multiprocess_nodes
 from ros_base.nodes.camera.camera_node import CameraNode
 from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode as JoystickNode
 from ros_base.utils.logger import CustomLogger
@@ -156,6 +156,8 @@ def main(args=None):
         "nav": HomiNavAgent,
         "turn": HomiTurnAgent,
     }
+    mp_nodes_dict = {"camera": CameraNode}
+    processes = register_multiprocess_nodes(mp_nodes_dict)
 
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
@@ -184,7 +186,13 @@ def main(args=None):
         cam_type=args.cam_type,
     )
 
-    homi_robot_node.start_main_loop()
+    try:
+        homi_robot_node.start_main_loop()
+    finally:
+        for process in processes:
+            if process.is_alive():
+                process.terminate()
+                process.join()
 
 
 if __name__ == "__main__":
