@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 import rclpy
-from ros_base.manager.base_manager import BaseManager, register_multiprocess_nodes, shutdown_multiprocess_nodes
+from ros_base.manager.base_manager import BaseManager, register_multiprocess_nodes
 from ros_base.nodes.camera.camera_node import CameraNode
 from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode as JoystickNode
 from ros_base.utils.logger import CustomLogger
@@ -135,12 +135,6 @@ class HomiRunSDK(BaseManager):
             self.curr_agent_r.handle()
 
     def handshake(self):
-        # if self.wait_robot:
-        #     self.logger.info("Waiting for robot low state message")
-        #     while not hasattr(self.robot, "low_state"):
-        #         time.sleep(0.1)
-        #     self.logger.info("Low state message received, the robot is ready to go")
-
         if self.wait_robot:
             self.logger.info("Waiting for robot low state message")
             if hasattr(self.robot, "low_state"):
@@ -183,6 +177,8 @@ def main(args=None):
         start_state="cold_start",
         logdir=os.path.expanduser(logdir),
         custom_logger=CustomLogger,
+        # log_freq=True,
+        main_loop_timer=True,
         # custom args
         auto=args.auto,
         dry_run=not args.nodryrun,

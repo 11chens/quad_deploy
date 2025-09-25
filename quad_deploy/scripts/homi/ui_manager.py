@@ -51,7 +51,7 @@ def main(args=None):
         show_raw_image=args.show_raw,
     )
 
-    homi_robot_node.start_main_loop()
+    homi_robot_node.start_main_loop_timer()
 
 
 if __name__ == "__main__":
