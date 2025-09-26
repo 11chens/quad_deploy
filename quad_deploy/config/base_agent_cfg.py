@@ -1,4 +1,5 @@
 class BaseAgentCfg:
+    decimation = 4  # infer every 4 steps
     smooth_factor = 0.1
     dead_zone = 0.2
     min_cmds = [-0.5, -0.8, -1.0]
@@ -7,6 +8,7 @@ class BaseAgentCfg:
     num_commands = 3
     num_props = 47
     len_history = 0
+    max_episode_length_s = 20  # max episode length in seconds
 
     class obs_scale:
         lin_vel = 2.0

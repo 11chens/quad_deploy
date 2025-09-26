@@ -5,33 +5,36 @@ from quad_deploy.config.stand_agent_cfg import StandAgentCfg
 
 
 class StandAgent(BaseRLAgent):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, cfg=StandAgentCfg, *args, **kwargs):
+        super().__init__(cfg=cfg, *args, **kwargs)
+        self.cfg: StandAgentCfg
 
-        self.startPos = StandAgentCfg.startPos
+    def parse_config(self):
+        super().parse_config()
+        self.startPos = self.cfg.startPos
 
         # Target positions for standing up
-        self._targetPos_1 = StandAgentCfg.targetPos_1
-        self._targetPos_2 = StandAgentCfg.targetPos_2
+        self._targetPos_1 = self.cfg.targetPos_1
+        self._targetPos_2 = self.cfg.targetPos_2
 
         self.stand_up_joint_pos = np.array(
-            StandAgentCfg.stand_up_joint_pos,
+            self.cfg.stand_up_joint_pos,
             dtype=np.float32,
         )
         self.stand_down_joint_pos = np.array(
-            StandAgentCfg.stand_down_joint_pos,
+            self.cfg.stand_down_joint_pos,
             dtype=np.float32,
         )
 
         # Duration for each phase of standing up
-        self.duration_1 = StandAgentCfg.duration_1
-        self.duration_2 = StandAgentCfg.duration_2
-        self.duration_3 = StandAgentCfg.duration_3
-        self.duration_4 = StandAgentCfg.duration_4
+        self.duration_1 = self.cfg.duration_1
+        self.duration_2 = self.cfg.duration_2
+        self.duration_3 = self.cfg.duration_3
+        self.duration_4 = self.cfg.duration_4
 
         # Standing parameters
-        self.stand_kp = StandAgentCfg.stand_kp
-        self.stand_kd = StandAgentCfg.stand_kd
+        self.stand_kp = self.cfg.stand_kp
+        self.stand_kd = self.cfg.stand_kd
 
         # Percentages for each phase
         self.percent_1 = 0.0

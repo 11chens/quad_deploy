@@ -7,6 +7,7 @@ import rclpy
 from ros_base.manager.base_manager import BaseManager, register_multiprocess_nodes
 from ros_base.nodes.camera.camera_node import CameraNode
 from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode as JoystickNode
+from ros_base.utils.args_debug import add_debug_mode
 from ros_base.utils.logger import CustomLogger
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
@@ -136,11 +137,33 @@ class HomiRunSDK(BaseManager):
 
     def handshake(self):
         if self.wait_robot:
-            self.logger.info("Waiting for robot low state message")
+            self.logger.log_once("Waiting for robot low state message")
             if hasattr(self.robot, "low_state"):
                 self.logger.info("Low state message received, the robot is ready to go")
                 return True
             return False
+
+
+def update_dict(
+    args=None, nodes_dict: dict = {}, agents_dict: dict = {}, mp_nodes_dict: dict = {}, cmds_dict: dict = {}
+):
+    """Update the dicts for debugging in a simulated environment."""
+    if args.cam_type.lower() == "none":
+        mp_nodes_dict.pop("camera")
+
+    if not args.nosimrun:
+        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
+
+        nodes_dict.update({"keyboard": KeyboardNode})
+        cmds_dict["keyboard"] = (
+            "bash -c 'LD_LIBRARY_PATH=$HOME/miniforge3/envs/humble/lib:$LD_LIBRARY_PATH; source"
+            " ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
+        )
+
+    if args.gripper.lower() == "none":
+        cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty20 pty,raw,echo=0,link=/tmp/pty21 &"
+
+    return nodes_dict, agents_dict, mp_nodes_dict, cmds_dict
 
 
 def main(args=None):
@@ -157,15 +180,17 @@ def main(args=None):
         "nav": HomiNavAgent,
         "turn": HomiTurnAgent,
     }
+
     mp_nodes_dict = {"camera": CameraNode}
-    processes = register_multiprocess_nodes(mp_nodes_dict)
 
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
-    if not args.nosimrun:
-        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
+    nodes_dict, agents_dict, mp_nodes_dict, cmds_dict = update_dict(
+        args=args, nodes_dict=nodes_dict, agents_dict=agents_dict, mp_nodes_dict=mp_nodes_dict
+    )
 
-        nodes_dict.update({"keyboard": KeyboardNode})
+    # Importantly, sub processes call rclpy.init() first, then the main process can call rclpy.init(), because rclpy can only be initialized once.
+    processes = register_multiprocess_nodes(mp_nodes_dict, cmds_dict)
 
     rclpy.init()
 
@@ -202,25 +227,16 @@ if __name__ == "__main__":
             "default": "two_fingers",
             "help": "Deciding what type of gripper to use (two_fingers, three_fingers, None).",
         },
-        {"name": "--cam_type", "type": str, "default": "zed", "help": "Camera type to use (zed, go2)."},
+        {"name": "--cam_type", "type": str, "default": "zed", "help": "Camera type to use (zed, go2, none)."},
     ]
-    # create sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
 
     args = parse_arguments(custom_parameters)
 
-    if args.debug:
-        import debugpy
-
-        ip_address = ("0.0.0.0", 7777)
-        print(f"Process: {sys.argv[:]}")
-        print(f"Is waiting for attach at {ip_address[0]}:{ip_address[1]}", flush=True)
-        debugpy.listen(ip_address)
-        debugpy.wait_for_client()
-        debugpy.breakpoint()
-
     if not args.nosimrun:
         ChannelFactoryInitialize(1, "lo")
+        args, _ = add_debug_mode(args=args, listen_port=8888)  # local attach
     else:
         ChannelFactoryInitialize(0, "eth0")
+        args, _ = add_debug_mode(args=args, listen_port=7777)  # unitree_wire
 
     main(args=args)

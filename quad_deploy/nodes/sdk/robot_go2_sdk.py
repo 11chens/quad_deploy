@@ -173,7 +173,7 @@ class UnitreeGo2SDKNode(BaseNode):
     @property
     def euler_rpy(self):
         self.euler_rpy_[0] = self.low_state.imu_state.rpy[0]
-        self.euler_rpy_[1] = self.low_state.imu_state.rpy[0]
+        self.euler_rpy_[1] = self.low_state.imu_state.rpy[1]
         self.euler_rpy_[2] = self.low_state.imu_state.rpy[2]
         return self.euler_rpy_
 

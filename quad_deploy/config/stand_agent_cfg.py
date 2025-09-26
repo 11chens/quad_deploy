@@ -1,4 +1,7 @@
-class StandAgentCfg:
+from quad_deploy.config.base_agent_cfg import BaseAgentCfg
+
+
+class StandAgentCfg(BaseAgentCfg):
     startPos = [0.0] * 12
     # Target positions for standing up
     targetPos_1 = [0.0, 1.36, -2.65, 0.0, 1.36, -2.65, -0.2, 1.36, -2.65, 0.2, 1.36, -2.65]

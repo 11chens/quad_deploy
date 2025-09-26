@@ -18,17 +18,21 @@ class BaseRLAgent(BaseAgent):
 
     def __init__(self, logdir: str = None, cfg: BaseAgentCfg = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.robot: UnitreeGo2SDKNode = self.nodes["robot"]
+        self.joystick: JoystickSDKNode = self.nodes["joystick"]
+
         self.logdir = logdir
         self.cfg = cfg
         self.parse_config()
         self.load_model()
 
-        self.robot: UnitreeGo2SDKNode = self.nodes["robot"]
-        self.joystick: JoystickSDKNode = self.nodes["joystick"]
-
     def parse_config(self):
         if self.cfg is None:
+            self.decimation = 4
+            self.dt = self.decimation / self.node_freq_hz  # infer timer (0.02s, 50Hz)
             return
+
         self.obs_scale = self.cfg.obs_scale
         self.smooth_factor = self.cfg.smooth_factor
         self.dead_zone = self.cfg.dead_zone
@@ -46,6 +50,11 @@ class BaseRLAgent(BaseAgent):
         self.post_cmds = np.zeros(self.num_commands, dtype=np.float32)
         self.obs_buf = np.zeros(self.num_props, dtype=np.float32)
         self.obs_hist = CircularBuffer(self.len_history)
+        self.step_dt = 1 / self.node_freq_hz  # step time (0.005s, 200Hz)
+        self.decimation = self.cfg.decimation
+        self.dt = self.decimation * self.step_dt  # infer timer (0.02s, 50Hz)
+        self.max_episode_length_s = self.cfg.max_episode_length_s
+        self.max_episode_length = np.ceil(self.max_episode_length_s / self.dt)
 
         self.wireless = True
         self.observation_components = []
@@ -95,7 +104,7 @@ class BaseRLAgent(BaseAgent):
         pass
 
     def handle(self):
-        if self.timestamp % 4 == 0:
+        if self.timestamp % self.decimation == 0:
             action, p_gains, d_gains, done = self.step()
         else:
             action, p_gains, d_gains, done = None, None, None, None

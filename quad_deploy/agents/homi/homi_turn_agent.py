@@ -6,12 +6,13 @@ import onnxruntime as ort
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
+from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 from quad_deploy.utils.math_utils import warp2pi
 
 
 class HomiTurnAgent(BaseRLAgent):
-    def __init__(self, cfg=None, *args, **kwargs):
+    def __init__(self, cfg=BaseAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]

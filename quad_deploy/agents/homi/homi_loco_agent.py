@@ -44,15 +44,8 @@ class HomiLocoAgent(BaseRLAgent):
     def step(self):
         self.get_observation()
         action = self.infer()
-        # if (self.robot.timestamp) % 500 == 0:
-        #     self.logger.debug(
-        #         f"Cx: {self.commands[0]:.2f}, Cy: {self.commands[1]:.2f}, Cyaw: {self.commands[2]:.2f}, Cpitch:"
-        #         f" {self.commands[3]:.2f}  "
-        #     )
-        #     self.logger.debug(
-        #         f"Vx: {self.base_lin_vel_pred[0].item():.2f}, Vy: {self.base_lin_vel_pred[1].item():.2f}, Vyaw:"
-        #         f" {self.robot.base_ang_vel[2:].item():.2f}, Pitch: {self.robot.euler_rpy[1].item():.2f} "
-        #     )
+        if (self.timestamp) % 10 == 0:
+            self.logger.info(f"pitch: {self.robot.euler_rpy[1]:.4f}")
         return action, None, None, self.done
 
     def reset(self):
