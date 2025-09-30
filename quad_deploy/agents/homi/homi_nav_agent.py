@@ -26,7 +26,7 @@ class HomiNavAgent(BaseRLAgent):
             (self.robot.base_ang_vel, self.obs_scale.ang_vel),  # dim 3
             (self.robot.projected_gravity, 1.0),  # dim 3
             (self.commands, 1.0),  # dim 3
-            (self.timer, 1.0),  # dim 1
+            # (self.timer, 1.0),  # dim 1
             (self.last_action, 1.0),  # dim 4
         ]
 
@@ -63,7 +63,7 @@ class HomiNavAgent(BaseRLAgent):
             f"[Nav] Proj gravity: ({self.robot.projected_gravity[0]:.5f}, {self.robot.projected_gravity[1]:.5f},"
             f" {self.robot.projected_gravity[2]:.5f})"
         )
-        self.logger.info(f"[Nav] Timer: {self.timer[0]:.5f}")
+        # self.logger.info(f"[Nav] Timer: {self.timer[0]:.5f}")
         self.logger.info(
             f"[Nav] Last action: ({self.last_action[0]:.5f}, {self.last_action[1]:.5f}, {self.last_action[2]:.5f},"
             f" {self.last_action[3]:.5f})"

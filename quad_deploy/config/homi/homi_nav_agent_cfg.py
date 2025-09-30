@@ -6,7 +6,8 @@ class HomiNavAgentCfg(BaseAgentCfg):
     num_commands = 3
     # (vx, vy, vyaw, pitch)
     num_actions = 4
-    num_props = 17  # 3+3+3+3+1+4
+    # num_props = 17  # 3+3+3+3+1+4
+    num_props = 16  # 3+3+3+3+4
     len_history = 10
     dead_zone = 0.2
     pixel_gain = 10

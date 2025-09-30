@@ -148,17 +148,20 @@ def update_dict(
     args=None, nodes_dict: dict = {}, agents_dict: dict = {}, mp_nodes_dict: dict = {}, cmds_dict: dict = {}
 ):
     """Update the dicts for debugging in a simulated environment."""
-    if args.cam_type.lower() == "none":
-        mp_nodes_dict.pop("camera")
-
     if not args.nosimrun:
-        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
-
-        nodes_dict.update({"keyboard": KeyboardNode})
+        args.cam_type = "none"
+        args.gripper = "none"
         cmds_dict["keyboard"] = (
             "bash -c 'LD_LIBRARY_PATH=$HOME/miniforge3/envs/humble/lib:$LD_LIBRARY_PATH; source"
             " ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
         )
+
+        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
+
+        nodes_dict.update({"keyboard": KeyboardNode})
+
+    if args.cam_type.lower() == "none":
+        mp_nodes_dict.pop("camera")
 
     if args.gripper.lower() == "none":
         cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty20 pty,raw,echo=0,link=/tmp/pty21 &"
