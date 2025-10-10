@@ -163,8 +163,8 @@ def update_dict(
     if args.cam_type.lower() == "none":
         mp_nodes_dict.pop("camera")
 
-    if args.gripper.lower() == "none":
-        cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty20 pty,raw,echo=0,link=/tmp/pty21 &"
+    # if args.gripper.lower() == "none":
+    #     cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty20 pty,raw,echo=0,link=/tmp/pty21 &"
 
     return nodes_dict, agents_dict, mp_nodes_dict, cmds_dict
 
@@ -240,6 +240,7 @@ if __name__ == "__main__":
         args, _ = add_debug_mode(args=args, listen_port=8888)  # local attach
     else:
         ChannelFactoryInitialize(0, "eth0")
-        args, _ = add_debug_mode(args=args, listen_port=7777)  # unitree_wire
+        args, _ = add_debug_mode(args=args, listen_port=9999)  # unitree_wireless
+        # args, _ = add_debug_mode(args=args, listen_port=7777)  # unitree_wire
 
     main(args=args)

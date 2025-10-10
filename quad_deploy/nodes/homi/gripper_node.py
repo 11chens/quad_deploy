@@ -10,24 +10,27 @@ from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 
 
 class GripperNode(BaseNode):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, gripper_type="two_fingers", *args, **kwargs):
         """Node to control the gripper via serial communication.
         Supported gripper types: "two_fingers", "three_fingers", or "None" (sim serial port).
         """
         super().__init__(*args, **kwargs)
 
         # Configure serial port
-        self.parse_config(*args, **kwargs)
-        self.duration = 2
+        self._support_gripper_types = ["two_fingers", "three_fingers"]
+        self.gripper_type = gripper_type
+        self.parse_config()
+        self.duration = 2  # duration to finish grasp or release action, in seconds
         self.start_time = None
 
-    def parse_config(self, gripper_type=None, *args, **kwargs):
-        if gripper_type == "two_fingers":
+    def parse_config(self):
+        """Parse configuration for different gripper types."""
+        if self.gripper_type == "two_fingers":
             self.grasp_data = bytes([0x24, 0x41, 0x30, 0x39, 0x38, 0x23])  # grasp command
             self.release_data = bytes([0x24, 0x41, 0x30, 0x35, 0x30, 0x23])  # release command
             self.port = "/dev/ttyUSB0"
 
-        elif gripper_type == "three_fingers":
+        elif self.gripper_type == "three_fingers":
             self.grasp_data = bytes([0x7B, 0x01, 0x02, 0x01, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF8, 0x7D])  # grasp command
             self.release_data = bytes(
                 [0x7B, 0x01, 0x02, 0x00, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF9, 0x7D]
@@ -59,12 +62,20 @@ class GripperNode(BaseNode):
             self.logger.error(f"An error occurred: {e}")
 
     def handle(self, grasp):
+        """Handle the gripper action based on the grasp command."""
+        if self.gripper_type not in self._support_gripper_types:
+            self.logger.warning(f"Gripper type '{self.gripper_type}' not supported. No action taken.")
+            self.start_time = self.timestamp
+            return
+
         if not hasattr(self, "serial_port"):
+            # First in, initialize serial port and start time
             self.serial_port = serial.Serial(
                 port=self.port,
                 baudrate=115200,  # Baud rate, can be modified as needed
                 timeout=1,
             )
+            self.start_time = self.timestamp
 
         if grasp:
             try:

@@ -4,10 +4,10 @@ from typing import List, Tuple
 import numpy as np
 from ros_base.agents.base_agent import BaseAgent
 from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode
+from ros_base.utils.math_utils import CircularBuffer
 
 from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode
-from quad_deploy.utils.math_utils import CircularBuffer
 
 
 class BaseRLAgent(BaseAgent):
@@ -52,7 +52,7 @@ class BaseRLAgent(BaseAgent):
         self.obs_hist = CircularBuffer(self.len_history)
         self.step_dt = 1 / self.node_freq_hz  # step time (0.005s, 200Hz)
         self.decimation = self.cfg.decimation
-        self.dt = self.decimation * self.step_dt  # infer timer (0.02s, 50Hz)
+        self.dt = self.decimation * self.step_dt  # infer time (0.02s, 50Hz)
         self.max_episode_length_s = self.cfg.max_episode_length_s
         self.max_episode_length = np.ceil(self.max_episode_length_s / self.dt)
 

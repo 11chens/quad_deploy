@@ -25,7 +25,8 @@ class HomiNavAgent(BaseRLAgent):
             (self.loco_agent.base_lin_vel_pred, self.obs_scale.lin_vel),  # dim 3
             (self.robot.base_ang_vel, self.obs_scale.ang_vel),  # dim 3
             (self.robot.projected_gravity, 1.0),  # dim 3
-            (self.commands, 1.0),  # dim 3
+            (self.robot.euler_rpy[1:2], 1.0),  # dim 1
+            (self.commands, 1.0),  # dim 2
             # (self.timer, 1.0),  # dim 1
             (self.last_action, 1.0),  # dim 4
         ]
@@ -95,11 +96,13 @@ class HomiNavAgent(BaseRLAgent):
 
     @property
     def commands(self):
-        _u = np.tanh(self.pixel_gain * (self.vlm.P_img[0] - self.cx_norm))
-        _v = np.tanh(self.pixel_gain * (self.vlm.P_img[1] - self.cy_norm))
-        _depth = self.vlm.P_img[2]
+        # _u = np.tanh(self.pixel_gain * (self.vlm.P_img[0] - self.cx_norm))
+        # _v = np.tanh(self.pixel_gain * (self.vlm.P_img[1] - self.cy_norm))
+        # _depth = self.vlm.P_img[2]
+        _u = self.vlm.P_img[0]
+        _v = self.vlm.P_img[1]
         return np.array(
-            [_u, _v, _depth],
+            [_u, _v],
             dtype=np.float32,
         )
 

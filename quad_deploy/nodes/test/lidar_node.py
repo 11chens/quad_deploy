@@ -2,9 +2,8 @@ import numpy as np
 from geometry_msgs.msg import Pose2D
 from rclpy.node import Node
 from ros_base.nodes.base_node import BaseNode
+from ros_base.utils.math_utils import CircularBuffer
 from sensor_msgs.msg import LaserScan
-
-from quad_deploy.utils.math_utils import CircularBuffer
 
 
 class LidarSubscriber(BaseNode):

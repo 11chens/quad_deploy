@@ -2,11 +2,11 @@ import time
 
 import cv2
 import numpy as np
+from geometry_msgs.msg import Point
 from ros_base.nodes.base_node import BaseNode
+from ros_base.utils.math_utils import CircularBuffer
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Bool, String
-
-from quad_deploy.utils.math_utils import CircularBuffer
 
 
 class VLM2UIBridge(BaseNode):
@@ -34,6 +34,8 @@ class VLM2UIBridge(BaseNode):
         self.turn_pub = self.create_publisher(String, "/control/turn", 1)
         self.ui_ready_pub = self.create_publisher(Bool, "/control/ui_ready", 1)
         self.inquiry_sub = self.create_subscription(Bool, "/control/inquiry", self._inquiry_callback, 1)
+        self.P_img_sub = self.create_subscription(Point, "/geometry_msgs/p_img", self._perception_callback, 1)
+        self.P_img = None  # (u, v, depth)
 
         self.ui_ready_msg = Bool()
         self.ui_ready = False
@@ -53,6 +55,9 @@ class VLM2UIBridge(BaseNode):
         self.turn_msg.data = self.turn
         self.turn_pub.publish(self.turn_msg)
         self.logger.info(f"""[Pub] turn: {self.turn}.""")
+
+    def _perception_callback(self, msg: Point):
+        self.P_img = [msg.x, msg.y, msg.z]  # (u, v, depth)
 
     def _inquiry_callback(self, msg: Bool):
         inquiry = msg.data
@@ -78,8 +83,28 @@ class VLM2UIBridge(BaseNode):
         # self.logger.info(f"mask_timestamp: {mask_timestamp*1e-6:.4f} ms")
         # self.logger.info(f"delay_timestamp4: {self.image_timestamp_hist.buffer[-4].item()*1e-6:.4f} ms")
         # self.logger.info(f"Loop delay: {loop_delay*1000:.1f} ms, Handle delay: {handle_delay*1000:.1f} ms")
+        if self.P_img is not None:
+            self.draw_info_on_img(image, f"P_img: ({self.P_img[0]:.2f}, {self.P_img[1]:.2f})")
         cv2.imshow("Mixed Image", image)
         cv2.waitKey(1)
+
+    def draw_info_on_img(self, image, text):
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        bottomLeftCornerOfText = (10, 20)
+        fontScale = 0.5
+        fontColor = (255, 255, 255)
+        lineType = 1
+
+        cv2.putText(
+            image,
+            text,
+            bottomLeftCornerOfText,
+            font,
+            fontScale,
+            fontColor,
+            lineType,
+        )
+        return image
 
     def image_callback(self, msg):
         # msg.data is between 0 and 255
