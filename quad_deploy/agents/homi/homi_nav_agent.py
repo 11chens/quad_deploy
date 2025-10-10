@@ -51,7 +51,7 @@ class HomiNavAgent(BaseRLAgent):
         return action
 
     def debug_info(self):
-        self.logger.info(f"[Nav] P_img: ({self.commands[0]:.5f}, {self.commands[1]:.5f}, {self.commands[2]:.5f})")
+        self.logger.info(f"[Nav] P_img: ({self.commands[0]:.5f}, {self.commands[1]:.5f})")
         self.logger.info(
             f"[Nav] Base lin vel: ({self.loco_agent.base_lin_vel_pred[0]:.5f},"
             f" {self.loco_agent.base_lin_vel_pred[1]:.5f}, {self.loco_agent.base_lin_vel_pred[2]:.5f})"
