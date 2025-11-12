@@ -50,9 +50,12 @@ class BaseRLAgent(BaseAgent):
         self.post_cmds = np.zeros(self.num_commands, dtype=np.float32)
         self.obs_buf = np.zeros(self.num_props, dtype=np.float32)
         self.obs_hist = CircularBuffer(self.len_history)
-        self.step_dt = 1 / self.node_freq_hz  # step time (0.005s, 200Hz)
-        self.decimation = self.cfg.decimation
-        self.dt = self.decimation * self.step_dt  # infer time (0.02s, 50Hz)
+        self.step_dt = (
+            1 / self.node_freq_hz
+        )  # step time (0.005s, 200Hz) or (0.02s, 50Hz), different implementation may have different step_dt
+        # Important: differ from simulation (fixed 4), here decimation is according to dt and step_dt, so that node_freq_hz can be changed freely
+        self.dt = 0.02  # infer time (0.02s, 50Hz), usually fixed
+        self.decimation = int(self.dt / self.step_dt)
         self.max_episode_length_s = self.cfg.max_episode_length_s
         self.max_episode_length = np.ceil(self.max_episode_length_s / self.dt)
 

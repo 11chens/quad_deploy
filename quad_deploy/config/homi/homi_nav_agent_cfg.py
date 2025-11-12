@@ -6,16 +6,16 @@ class HomiNavAgentCfg(BaseAgentCfg):
     num_commands = 3
     # (vx, vy, vyaw, pitch)
     num_actions = 4
-    # num_props = 17  # 3+3+3+3+1+4
-    num_props = 16  # 3+3+3+3+4
+    num_props = 10 + num_actions
+    num_nav_commands = num_commands
     len_history = 10
-    dead_zone = 0.2
+    nav_length_history = 50
     pixel_gain = 10
     cx_norm = 0.5
     cy_norm = 0.5
     max_episode_length_s = 9  # max episode length in seconds
 
-    limit_vx = [0.3, 0.6]  # [m/s]
+    limit_vx = [-0.3, 0.5]  # [m/s]
     limit_vy = [-0.05, 0.05]  # [m/s]
     limit_vyaw = [-1.0, 1.0]  # [rad/s]
     limit_pitch = [-0.5, 0.5]  # [rad]

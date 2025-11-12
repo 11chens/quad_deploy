@@ -201,7 +201,7 @@ def main(args=None):
         # ros_base args
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
-        node_freq_hz=200,
+        node_freq_hz=50,
         start_state="cold_start",
         logdir=os.path.expanduser(logdir),
         custom_logger=CustomLogger,
@@ -222,25 +222,25 @@ def main(args=None):
 
 if __name__ == "__main__":
     custom_parameters = [
-        {"name": "--wait_robot", "action": "store_true", "default": True, "help": "Waiting for robot return lowstate."},
-        {"name": "--wait_vlm", "action": "store_true", "default": True, "help": "Waiting for VLM return highstate."},
+        {"name": "--wait_robot", "type": bool, "default": True, "help": "Waiting for robot return lowstate."},
+        {"name": "--wait_vlm", "type": bool, "default": True, "help": "Waiting for VLM return highstate."},
         {
             "name": "--gripper",
             "type": str,
-            "default": "two_fingers",
+            "default": "None",
             "help": "Deciding what type of gripper to use (two_fingers, three_fingers, None).",
         },
-        {"name": "--cam_type", "type": str, "default": "zed", "help": "Camera type to use (zed, go2, none)."},
+        {"name": "--cam_type", "type": str, "default": "None", "help": "Camera type to use (zed, go2, None)."},
     ]
 
     args = parse_arguments(custom_parameters)
 
     if not args.nosimrun:
         ChannelFactoryInitialize(1, "lo")
-        args, _ = add_debug_mode(args=args, listen_port=8888)  # local attach
+        add_debug_mode(args=args, listen_port=8888)  # local attach
     else:
         ChannelFactoryInitialize(0, "eth0")
-        args, _ = add_debug_mode(args=args, listen_port=9999)  # unitree_wireless
-        # args, _ = add_debug_mode(args=args, listen_port=7777)  # unitree_wire
+        add_debug_mode(args=args, listen_port=9999)  # unitree_wireless
+        # add_debug_mode(args=args, listen_port=7777)  # unitree_wire
 
     main(args=args)

@@ -98,7 +98,7 @@ class UnitreeGo2SDKNode(BaseNode):
         self.joint_pos_protect_high = joint_pos_mid + joint_pos_range * self.dof_pos__protect_ratio
         self.joint_pos_protect_low = joint_pos_mid - joint_pos_range * self.dof_pos__protect_ratio
         self.action = np.zeros(self.NUM_ACTIONS, dtype=np.float32)
-        self.ang_vel_filter_ = VectorLPFilter(0.02, cutoff_freq=3.0, num_channels=3)
+        self.ang_vel_filter_ = VectorLPFilter(0.02, cutoff_freq=10.0, num_channels=3)
 
         self.reindex(self.torque_limits)
         self.reindex(self.default_dof_pos)

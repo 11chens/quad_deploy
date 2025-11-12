@@ -1,9 +1,9 @@
 class BaseAgentCfg:
     decimation = 4  # infer every 4 steps
     smooth_factor = 0.1
-    dead_zone = 0.2
-    min_cmds = [-0.5, -0.8, -1.0]
-    max_cmds = [1.5, 0.8, 1.0]
+    dead_zone = 0.0
+    min_cmds = [-0.5, -0.5, -1.0]
+    max_cmds = [1.0, 0.5, 1.0]
 
     num_commands = 3
     num_props = 47

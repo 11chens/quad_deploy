@@ -7,11 +7,9 @@ class NavAgentCfg(BaseAgentCfg):
     num_props = 12
     num_actor_obs = 77
     len_history = 10
-    smooth_factor = 0.1
     goal_world = [5.0, 0.0]
     min_cmds = [-0.5, -0.8, -1.0]
     max_cmds = [1.5, 0.8, 1.0]
-    dead_zone = 0.2
     sigma = 0.1
 
     class obs_scale(BaseAgentCfg.obs_scale):

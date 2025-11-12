@@ -8,7 +8,6 @@ class HomiTurnAgentCfg(BaseAgentCfg):
     num_actions = 4
     num_props = 16
     len_history = 10
-    dead_zone = 0.2
 
     min_action = [-0.5, -1.0, -1.0, -0.5]
     max_action = [1.0, 1.0, 1.0, 0.5]

@@ -23,7 +23,7 @@ class KeyboardSDKNode(BaseNode):
         self.joy_stick_pub = ChannelPublisher(self.joy_stick_topic, WirelessController_)
         self.joy_stick_pub.Init()
         self.joy_stick_msg = unitree_go_msg_dds__WirelessController_()
-        self.create_timer(0.005, self.publish)
+        self.create_timer(1 / self.node_freq_hz, self.publish)
         self._init_keys()
 
         self.cmd_vx = 0
