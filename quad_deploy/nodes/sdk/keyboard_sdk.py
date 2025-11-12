@@ -1,4 +1,3 @@
-from keyboard_msgs.msg import Key
 from ros_base.nodes.base_node import BaseNode
 from ros_base.utils.button_code import WirelessButtons
 from unitree_sdk2py.core.channel import ChannelPublisher
@@ -17,6 +16,8 @@ class KeyboardSDKNode(BaseNode):
         """
         super().__init__(*args, **kwargs)
 
+        from keyboard_msgs.msg import Key
+        
         self.WirelessButtons = WirelessButtons()
         self.keydown_sub = self.create_subscription(Key, keyboard_topic, self._keydown_callback, 1)
         self.joy_stick_topic = joy_stick_topic
@@ -44,7 +45,7 @@ class KeyboardSDKNode(BaseNode):
         self.vyaw_right = False
         self.vyaw_left = False
 
-    def _keydown_callback(self, msg: Key):
+    def _keydown_callback(self, msg):
         self.X = msg.code == 120  # X
         self.X *= self.WirelessButtons.X
 
