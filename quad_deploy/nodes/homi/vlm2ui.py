@@ -35,7 +35,11 @@ class VLM2UIBridge(BaseNode):
         self.ui_ready_pub = self.create_publisher(Bool, "/control/ui_ready", 1)
         self.inquiry_sub = self.create_subscription(Bool, "/control/inquiry", self._inquiry_callback, 1)
         self.P_img_sub = self.create_subscription(Point, "/geometry_msgs/p_img", self._perception_callback, 1)
+        self.p_img_filter_sub = self.create_subscription(
+            Point, "/geometry_msgs/p_img_filtered", self._p_img_filter_callback, 1
+        )
         self.P_img = None  # (u, v, depth)
+        self.P_img_filtered = None  # (u, v, depth)
 
         self.ui_ready_msg = Bool()
         self.ui_ready = False
@@ -56,6 +60,9 @@ class VLM2UIBridge(BaseNode):
         self.turn_pub.publish(self.turn_msg)
         self.logger.info(f"""[Pub] turn: {self.turn}.""")
 
+    def _p_img_filter_callback(self, msg: Point):
+        self.P_img_filtered = [msg.x, msg.y, msg.z]  # (u, v, depth)
+
     def _perception_callback(self, msg: Point):
         self.P_img = [msg.x, msg.y, msg.z]  # (u, v, depth)
 
@@ -75,22 +82,38 @@ class VLM2UIBridge(BaseNode):
         self.green_image[:, :, :] = (0, 185, 118)
         self.green_image[cv_mask == 0] = 0
 
-        delay_cv_image = self.cv_image_hist.buffer[-2] if self.cv_image_hist.buffer is not None else self.cv_image
-        image = cv2.addWeighted(delay_cv_image, 0.5, self.green_image, 0.5, 0)
+        # delay_cv_image = self.cv_image_hist.buffer[-2] if self.cv_image_hist.buffer is not None else self.cv_image
+        image = cv2.addWeighted(self.cv_image, 0.5, self.green_image, 0.5, 0)
 
         # delay_timestamp = self.image_timestamp_hist.buffer[-4] if self.image_timestamp_hist.buffer is not None else 0
         # mask_timestamp = msg.header.stamp.nanosec
         # self.logger.info(f"mask_timestamp: {mask_timestamp*1e-6:.4f} ms")
         # self.logger.info(f"delay_timestamp4: {self.image_timestamp_hist.buffer[-4].item()*1e-6:.4f} ms")
         # self.logger.info(f"Loop delay: {loop_delay*1000:.1f} ms, Handle delay: {handle_delay*1000:.1f} ms")
+
+        # draw P_img_filtered circle
+        if self.P_img_filtered is not None:
+            u = int(self.P_img_filtered[0] * self.cv_image.shape[1])
+            v = int(self.P_img_filtered[1] * self.cv_image.shape[0])
+            cv2.circle(image, (u, v), 5, (255, 0, 0), -1)  # blue circle
+
         if self.P_img is not None:
-            self.draw_info_on_img(image, f"P_img: ({self.P_img[0]:.2f}, {self.P_img[1]:.2f})")
+            self.draw_info_on_img(
+                image, f"P_img: ({self.P_img[0]:.2f}, {self.P_img[1]:.2f}, {self.P_img[2]:.2f} m)", position=(10, 20)
+            )
+            self.draw_info_on_img(
+                image,
+                f"P_img_filt: ({self.P_img_filtered[0]:.2f}, {self.P_img_filtered[1]:.2f},"
+                f" {self.P_img_filtered[2]:.2f} m)",
+                position=(10, 40),
+            )
+
         cv2.imshow("Mixed Image", image)
         cv2.waitKey(1)
 
-    def draw_info_on_img(self, image, text):
+    def draw_info_on_img(self, image, text, position=(10, 20)):
         font = cv2.FONT_HERSHEY_SIMPLEX
-        bottomLeftCornerOfText = (10, 20)
+        bottomLeftCornerOfText = position
         fontScale = 0.5
         fontColor = (255, 255, 255)
         lineType = 1
@@ -122,3 +145,26 @@ class VLM2UIBridge(BaseNode):
                 self.logger.info("Quitting...")
                 cv2.destroyWindow("Raw Image")
                 self.logger.info("Destroyed Raw Image window.")
+
+
+def main():
+    import rclpy
+    from ros_base.utils.args_debug import add_debug_mode
+
+    parser = add_debug_mode(listen_port=8888)
+    parser.add_argument("--raw", action="store_true", help="Show raw image window.")
+    args = parser.parse_args()
+
+    rclpy.init()
+    vlm2ui_node = VLM2UIBridge(node_name="vlm2ui_bridge", show_raw_image=args.raw)
+    try:
+        vlm2ui_node.start_spin_standalone()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        vlm2ui_node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
