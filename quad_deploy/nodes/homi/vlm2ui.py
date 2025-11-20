@@ -5,7 +5,7 @@ import numpy as np
 from geometry_msgs.msg import Point
 from ros_base.nodes.base_node import BaseNode
 from ros_base.utils.math_utils import CircularBuffer
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, String
 
 
@@ -18,9 +18,14 @@ class VLM2UIBridge(BaseNode):
         super().__init__(*args, **kwargs)
 
         self.show_raw_image = show_raw_image
-        self.image_subscription = self.create_subscription(
-            CompressedImage, "/geometry_msgs/image", self.image_callback, 1
-        )
+
+        # img_topic = "/geometry_msgs/image"
+        # self.image_subscription = self.create_subscription(
+        #     CompressedImage, img_topic, self.image_callback, 1
+        # )
+
+        img_topic = "/camera/color/image_raw"
+        self.image_subscription = self.create_subscription(Image, img_topic, self._img_callback, 1)
 
         self.mask_subscription = self.create_subscription(
             CompressedImage, "/geometry_msgs/mask", self._mask_callback, 1
@@ -91,16 +96,17 @@ class VLM2UIBridge(BaseNode):
         # self.logger.info(f"delay_timestamp4: {self.image_timestamp_hist.buffer[-4].item()*1e-6:.4f} ms")
         # self.logger.info(f"Loop delay: {loop_delay*1000:.1f} ms, Handle delay: {handle_delay*1000:.1f} ms")
 
-        # draw P_img_filtered circle
-        if self.P_img_filtered is not None:
-            u = int(self.P_img_filtered[0] * self.cv_image.shape[1])
-            v = int(self.P_img_filtered[1] * self.cv_image.shape[0])
-            cv2.circle(image, (u, v), 5, (255, 0, 0), -1)  # blue circle
-
         if self.P_img is not None:
             self.draw_info_on_img(
                 image, f"P_img: ({self.P_img[0]:.2f}, {self.P_img[1]:.2f}, {self.P_img[2]:.2f} m)", position=(10, 20)
             )
+
+        if self.P_img_filtered is not None:
+            # draw P_img_filtered circle
+            u = int(self.P_img_filtered[0] * self.cv_image.shape[1])
+            v = int(self.P_img_filtered[1] * self.cv_image.shape[0])
+            cv2.circle(image, (u, v), 5, (255, 0, 0), -1)  # blue circle
+
             self.draw_info_on_img(
                 image,
                 f"P_img_filt: ({self.P_img_filtered[0]:.2f}, {self.P_img_filtered[1]:.2f},"
@@ -145,6 +151,9 @@ class VLM2UIBridge(BaseNode):
                 self.logger.info("Quitting...")
                 cv2.destroyWindow("Raw Image")
                 self.logger.info("Destroyed Raw Image window.")
+
+    def _img_callback(self, msg):
+        self.cv_image = np.frombuffer(msg.data, np.uint8).reshape((msg.height, msg.width, -1))
 
 
 def main():
