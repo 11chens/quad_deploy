@@ -1,8 +1,8 @@
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PointStamped, Twist
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from ros_base.nodes.base_node import BaseNode
 from std_msgs.msg import Bool, String
-from geometry_msgs.msg import Twist
 
 
 class VLM2BobotBridge(BaseNode):
@@ -13,7 +13,7 @@ class VLM2BobotBridge(BaseNode):
         # subscriber
         self.turn_sub = self.create_subscription(String, "/control/turn", self._turn_control_callback, 1)
         self.grasp_sub = self.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 1)
-        self.P_img_sub = self.create_subscription(Point, "/geometry_msgs/p_img", self._perception_callback, 1)
+        self.P_img_sub = self.create_subscription(PointStamped, "/geometry_msgs/p_img", self._perception_callback, 1)
         self.vlm_done_sub = self.create_subscription(Bool, "/control/vlm_done", self._vlm_done_callback, 1)
 
         self.turn = ""
@@ -34,6 +34,9 @@ class VLM2BobotBridge(BaseNode):
 
         self.twist_pub = self.create_publisher(Twist, "/control/twist", 1)
         self.twist_msg = Twist()
+
+        self.odom_pub = self.create_publisher(Odometry, "/visual_slam/tracking/odometry", 1)
+        self.odom_msg = Odometry()
 
         self.target_yaw = 0.0
         self.initial_yaw = 0.0
@@ -62,8 +65,8 @@ class VLM2BobotBridge(BaseNode):
         # +180 degree (+2)
         self.initial_yaw = self.nodes["robot"].euler_rpy[2]
 
-    def _perception_callback(self, msg: Point):
-        self.P_img = [msg.x, msg.y, msg.z]  # (u, v, depth)
+    def _perception_callback(self, msg: PointStamped):
+        self.P_img = [msg.point.x, msg.point.y, msg.point.z]  # (u, v, depth)
 
     def _vlm_done_callback(self, msg: Bool):
         vlm_done = msg.data
@@ -99,7 +102,25 @@ class VLM2BobotBridge(BaseNode):
         self.twist_msg.angular.y = float(ang_vel[1])
         self.twist_msg.angular.z = float(ang_vel[2])
         self.twist_pub.publish(self.twist_msg)
-        
+
+    def publish_robot_odom(self, position=None, orientation_quat=None, lin_vel=None, ang_vel=None):
+        self.odom_msg.header.stamp = self.get_clock().now().to_msg()
+        self.odom_msg.header.frame_id = "odom"
+        self.odom_msg.child_frame_id = "robot_base"
+        self.odom_msg.pose.pose.position.x = float(position[0]) if position is not None else 0.0
+        self.odom_msg.pose.pose.position.y = float(position[1]) if position is not None else 0.0
+        self.odom_msg.pose.pose.position.z = float(position[2]) if position is not None else 0.0
+        self.odom_msg.pose.pose.orientation.w = float(orientation_quat[0]) if orientation_quat is not None else 1.0
+        self.odom_msg.pose.pose.orientation.x = float(orientation_quat[1]) if orientation_quat is not None else 0.0
+        self.odom_msg.pose.pose.orientation.y = float(orientation_quat[2]) if orientation_quat is not None else 0.0
+        self.odom_msg.pose.pose.orientation.z = float(orientation_quat[3]) if orientation_quat is not None else 0.0
+        self.odom_msg.twist.twist.linear.x = float(lin_vel[0]) if lin_vel is not None else 0.0
+        self.odom_msg.twist.twist.linear.y = float(lin_vel[1]) if lin_vel is not None else 0.0
+        self.odom_msg.twist.twist.linear.z = float(lin_vel[2]) if lin_vel is not None else 0.0
+        self.odom_msg.twist.twist.angular.x = float(ang_vel[0]) if ang_vel is not None else 0.0
+        self.odom_msg.twist.twist.angular.y = float(ang_vel[1]) if ang_vel is not None else 0.0
+        self.odom_msg.twist.twist.angular.z = float(ang_vel[2]) if ang_vel is not None else 0.0
+        self.odom_pub.publish(self.odom_msg)
 
     def reset(self):
         self.start = False

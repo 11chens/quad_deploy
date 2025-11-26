@@ -2,7 +2,7 @@ import time
 
 import cv2
 import numpy as np
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PointStamped
 from ros_base.nodes.base_node import BaseNode
 from ros_base.utils.math_utils import CircularBuffer
 from sensor_msgs.msg import CompressedImage, Image
@@ -19,7 +19,9 @@ class VLM2UIBridge(BaseNode):
 
         self.show_raw_image = show_raw_image
 
-        # img_topic = "/geometry_msgs/image"
+        # img_topic = "/geometry_msgs/image" # used for custom message type
+
+        # img_topic = "/camera/color/image_raw/compressed"
         # self.image_subscription = self.create_subscription(
         #     CompressedImage, img_topic, self.image_callback, 1
         # )
@@ -39,9 +41,9 @@ class VLM2UIBridge(BaseNode):
         self.turn_pub = self.create_publisher(String, "/control/turn", 1)
         self.ui_ready_pub = self.create_publisher(Bool, "/control/ui_ready", 1)
         self.inquiry_sub = self.create_subscription(Bool, "/control/inquiry", self._inquiry_callback, 1)
-        self.P_img_sub = self.create_subscription(Point, "/geometry_msgs/p_img", self._perception_callback, 1)
+        self.P_img_sub = self.create_subscription(PointStamped, "/geometry_msgs/p_img", self._perception_callback, 1)
         self.p_img_filter_sub = self.create_subscription(
-            Point, "/geometry_msgs/p_img_filtered", self._p_img_filter_callback, 1
+            PointStamped, "/geometry_msgs/p_img_filtered", self._p_img_filter_callback, 1
         )
         self.P_img = None  # (u, v, depth)
         self.P_img_filtered = None  # (u, v, depth)
@@ -65,11 +67,11 @@ class VLM2UIBridge(BaseNode):
         self.turn_pub.publish(self.turn_msg)
         self.logger.info(f"""[Pub] turn: {self.turn}.""")
 
-    def _p_img_filter_callback(self, msg: Point):
-        self.P_img_filtered = [msg.x, msg.y, msg.z]  # (u, v, depth)
+    def _p_img_filter_callback(self, msg: PointStamped):
+        self.P_img_filtered = [msg.point.x, msg.point.y, msg.point.z]  # (u, v, depth)
 
-    def _perception_callback(self, msg: Point):
-        self.P_img = [msg.x, msg.y, msg.z]  # (u, v, depth)
+    def _perception_callback(self, msg: PointStamped):
+        self.P_img = [msg.point.x, msg.point.y, msg.point.z]  # (u, v, depth)
 
     def _inquiry_callback(self, msg: Bool):
         inquiry = msg.data
@@ -154,6 +156,15 @@ class VLM2UIBridge(BaseNode):
 
     def _img_callback(self, msg):
         self.cv_image = np.frombuffer(msg.data, np.uint8).reshape((msg.height, msg.width, -1))
+
+        if self.show_raw_image:
+            cv2.imshow("Raw Image", self.cv_image)
+            key = cv2.waitKey(1)
+
+            if key == ord("q"):
+                self.logger.info("Quitting...")
+                cv2.destroyWindow("Raw Image")
+                self.logger.info("Destroyed Raw Image window.")
 
 
 def main():

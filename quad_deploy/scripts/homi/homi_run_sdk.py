@@ -135,9 +135,15 @@ class HomiRunSDK(BaseManager):
         if not self.state == "emergency":
             self.curr_agent_r.handle()
             # Publish robot twist
-            lin_vel = self.agents["loco"].base_lin_vel_pred
-            ang_vel = self.robot.base_ang_vel
-            self.vlm.publish_robot_twist(lin_vel=lin_vel, ang_vel=ang_vel)
+            # lin_vel = self.agents["loco"].base_lin_vel_pred
+            # ang_vel = self.robot.base_ang_vel
+            # self.vlm.publish_robot_twist(lin_vel=lin_vel, ang_vel=ang_vel)
+            # self.vlm.publish_robot_odom(
+            #     position=None,
+            #     orientation_quat=None,
+            #     lin_vel=lin_vel,
+            #     ang_vel=ang_vel,
+            # )
 
     def handshake(self):
         if self.wait_robot:
