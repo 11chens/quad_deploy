@@ -2,6 +2,7 @@ from geometry_msgs.msg import Point
 from rclpy.node import Node
 from ros_base.nodes.base_node import BaseNode
 from std_msgs.msg import Bool, String
+from geometry_msgs.msg import Twist
 
 
 class VLM2BobotBridge(BaseNode):
@@ -30,6 +31,9 @@ class VLM2BobotBridge(BaseNode):
         self.grasp_done_pub = self.create_publisher(Bool, "/control/grasp_done", 1)
         self.grasp_done_msg = Bool()
         self.grasp_done = False
+
+        self.twist_pub = self.create_publisher(Twist, "/control/twist", 1)
+        self.twist_msg = Twist()
 
         self.target_yaw = 0.0
         self.initial_yaw = 0.0
@@ -86,6 +90,16 @@ class VLM2BobotBridge(BaseNode):
             self.grasp_done_msg.data = grasp_done
             self.grasp_done_pub.publish(self.grasp_done_msg)
             self.logger.info(f"""[Pub] grasp_done: {grasp_done}.""")
+
+    def publish_robot_twist(self, lin_vel, ang_vel):
+        self.twist_msg.linear.x = float(lin_vel[0])
+        self.twist_msg.linear.y = float(lin_vel[1])
+        self.twist_msg.linear.z = float(lin_vel[2])
+        self.twist_msg.angular.x = float(ang_vel[0])
+        self.twist_msg.angular.y = float(ang_vel[1])
+        self.twist_msg.angular.z = float(ang_vel[2])
+        self.twist_pub.publish(self.twist_msg)
+        
 
     def reset(self):
         self.start = False
