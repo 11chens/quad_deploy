@@ -29,9 +29,9 @@ class VLM2UIBridge(BaseNode):
         img_topic = "/camera/color/image_raw"
         self.image_subscription = self.create_subscription(Image, img_topic, self._img_callback, 1)
 
-        self.mask_subscription = self.create_subscription(
-            CompressedImage, "/geometry_msgs/mask", self._mask_callback, 1
-        )
+        # self.mask_subscription = self.create_subscription(
+        #     CompressedImage, "/geometry_msgs/mask", self._mask_callback, 1
+        # )
 
         self.cv_image = None
         self.cv_image_hist = CircularBuffer(10)  # append image for buffer, 20 Hz, 50 ms
@@ -47,6 +47,11 @@ class VLM2UIBridge(BaseNode):
         )
         self.P_img = None  # (u, v, depth)
         self.P_img_filtered = None  # (u, v, depth)
+
+        # Visualization state
+        self.vis_width, self.vis_height = 640, 360
+        self.vis_canvas = np.zeros((self.vis_height, self.vis_width, 3), dtype=np.uint8)
+        self.create_timer(0.05, self._show_p_img_window)  # 20 Hz visualization
 
         self.ui_ready_msg = Bool()
         self.ui_ready = False
@@ -158,13 +163,84 @@ class VLM2UIBridge(BaseNode):
         self.cv_image = np.frombuffer(msg.data, np.uint8).reshape((msg.height, msg.width, -1))
 
         if self.show_raw_image:
-            cv2.imshow("Raw Image", self.cv_image)
-            key = cv2.waitKey(1)
+
+            if self.P_img is not None:
+                # draw P_img circle
+                u = int(self.P_img[0] * self.cv_image.shape[1])
+                v = int(self.P_img[1] * self.cv_image.shape[0])
+                cv2.circle(self.cv_image, (u, v), 5, (0, 255, 0), -1)  # green circle
+                self.draw_info_on_img(
+                    self.cv_image,
+                    f"P_img: ({self.P_img[0]:.2f}, {self.P_img[1]:.2f}, {self.P_img[2]:.2f} m)",
+                    position=(10, 20),
+                )
+
+            if self.P_img_filtered is not None:
+                # draw P_img_filtered circle
+                u = int(self.P_img_filtered[0] * self.cv_image.shape[1])
+                v = int(self.P_img_filtered[1] * self.cv_image.shape[0])
+                cv2.circle(self.cv_image, (u, v), 5, (255, 0, 0), -1)  # blue circle
+
+                self.draw_info_on_img(
+                    self.cv_image,
+                    f"P_img_filt: ({self.P_img_filtered[0]:.2f}, {self.P_img_filtered[1]:.2f},"
+                    f" {self.P_img_filtered[2]:.2f} m)",
+                    position=(10, 40),
+                )
+
+                cv2.imshow("Raw Image", self.cv_image)
+                key = cv2.waitKey(1)
 
             if key == ord("q"):
                 self.logger.info("Quitting...")
                 cv2.destroyWindow("Raw Image")
                 self.logger.info("Destroyed Raw Image window.")
+
+    def _show_p_img_window(self):
+        """Draw `P_img` and `P_img_filtered` onto a blank 640x360 canvas and show it.
+
+        Assumes `P_img` and `P_img_filtered` are normalized in [0,1] for (u,v).
+        """
+        # Clear canvas
+        self.vis_canvas.fill(0)
+
+        width, height = self.vis_width, self.vis_height
+
+        # Draw raw P_img (green)
+        if self.P_img is not None:
+            try:
+                ux = int(np.clip(self.P_img[0], 0.0, 1.0) * (width - 1))
+                vy = int(np.clip(self.P_img[1], 0.0, 1.0) * (height - 1))
+                cv2.circle(self.vis_canvas, (ux, vy), 6, (0, 255, 0), -1)
+                self.draw_info_on_img(
+                    self.vis_canvas,
+                    f"P_img: ({self.P_img[0]:.2f}, {self.P_img[1]:.2f}, {self.P_img[2]:.2f} m)",
+                    position=(10, 20),
+                )
+            except Exception:
+                pass
+
+        # Draw filtered P_img (blue)
+        if self.P_img_filtered is not None:
+            try:
+                uxf = int(np.clip(self.P_img_filtered[0], 0.0, 1.0) * (width - 1))
+                vyf = int(np.clip(self.P_img_filtered[1], 0.0, 1.0) * (height - 1))
+                cv2.circle(self.vis_canvas, (uxf, vyf), 6, (255, 0, 0), -1)
+                self.draw_info_on_img(
+                    self.vis_canvas,
+                    f"P_img_filt: ({self.P_img[0]:.2f}, {self.P_img[1]:.2f}, {self.P_img[2]:.2f} m)",
+                    position=(10, 40),
+                )
+            except Exception:
+                pass
+
+        # Show
+        try:
+            cv2.imshow("P Image Window", self.vis_canvas)
+            cv2.waitKey(1)
+        except Exception:
+            # Some environments (headless) may fail to create windows; ignore silently
+            pass
 
 
 def main():
