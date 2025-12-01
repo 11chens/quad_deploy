@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -13,6 +14,37 @@ def run_command(cmd, background=False):
         return subprocess.Popen(cmd, shell=True, preexec_fn=os.setsid)
     else:
         return subprocess.run(cmd, shell=True)
+
+
+def get_bag_start_time(bag_path):
+    try:
+        # Check if it's a directory or file
+        if os.path.isdir(bag_path):
+            # If directory, ros2 bag info works on the directory
+            pass
+
+        result = subprocess.run(f"ros2 bag info {bag_path}", shell=True, capture_output=True, text=True)
+        # Look for "Start:             Dec  1 2025 23:36:07.123456789 (1764603367.123456789)"
+        # Regex to capture the float inside parentheses
+        match = re.search(r"Start:.*?\(([\d\.]+)\)", result.stdout)
+        if match:
+            return float(match.group(1))
+    except Exception as e:
+        print(f"Error getting bag info for {bag_path}: {e}")
+    return None
+
+
+def get_video_start_time(ts_path):
+    try:
+        with open(ts_path) as f:
+            line = f.readline().strip()
+            if line:
+                parts = line.split(".")
+                if len(parts) >= 2:
+                    return float(parts[0]) + float(parts[1]) * 1e-9
+    except Exception as e:
+        print(f"Error reading timestamp file {ts_path}: {e}")
+    return None
 
 
 def record_bag(output_dir, include_rgb=True):
@@ -36,10 +68,15 @@ def record_bag(output_dir, include_rgb=True):
         print("\nRecording stopped.")
 
 
-def play_and_visualize(bag_path, show_raw=False):
-    if not os.path.exists(bag_path):
-        print(f"Error: Bag path '{bag_path}' does not exist.")
-        return
+def play_and_visualize(bag_paths, show_raw=False):
+    # Ensure bag_paths is a list
+    if isinstance(bag_paths, str):
+        bag_paths = [bag_paths]
+
+    for bag_path in bag_paths:
+        if not os.path.exists(bag_path):
+            print(f"Error: Bag path '{bag_path}' does not exist.")
+            return
 
     # Start visualization node in background
     print("Starting visualization node (vlm2ui.py)...")
@@ -64,18 +101,104 @@ def play_and_visualize(bag_path, show_raw=False):
     # Give it a moment to start
     time.sleep(2)
 
-    # Play bag
-    print(f"Playing bag: {bag_path}...")
-    play_cmd = f"ros2 bag play {bag_path}"
+    # Play bags
+    play_procs = []
+    rosbag_args = []
+    video_args = []
+
+    for path in bag_paths:
+        if path.endswith(".avi"):
+            video_args.append(path)
+        else:
+            rosbag_args.append(path)
+
+    # Calculate start times for synchronization
+    bag_start_time = None
+    if rosbag_args:
+        # Use the first bag to determine start time
+        bag_start_time = get_bag_start_time(rosbag_args[0])
+        if bag_start_time:
+            print(f"Bag start time: {bag_start_time}")
+
+    video_start_times = {}
+    for vid_path in video_args:
+        ts_path = vid_path.replace(".avi", ".txt")
+        if not os.path.exists(ts_path) and "_img_" in vid_path:
+            ts_path = vid_path.replace("_img_", "_ts_").replace(".avi", ".txt")
+
+        if os.path.exists(ts_path):
+            t = get_video_start_time(ts_path)
+            if t:
+                video_start_times[vid_path] = (t, ts_path)
+                print(f"Video {vid_path} start time: {t}")
+
+    # Determine global start time
+    start_times = []
+    if bag_start_time:
+        start_times.append(bag_start_time)
+    for t, _ in video_start_times.values():
+        start_times.append(t)
+
+    min_start_time = min(start_times) if start_times else 0
+    if min_start_time > 0:
+        print(f"Global start time: {min_start_time}")
 
     try:
-        run_command(play_cmd, background=False)
-        print("Bag playback finished.")
+        # Start rosbag play
+        if rosbag_args:
+            delay = 0.0
+            if bag_start_time and min_start_time > 0:
+                delay = max(0.0, bag_start_time - min_start_time)
+
+            print(f"Playing bags: {rosbag_args} with delay {delay:.3f}s...")
+            cmd = f"sleep {delay} && ros2 bag play {' '.join(rosbag_args)}"
+            play_procs.append(run_command(cmd, background=True))
+
+        # Start video play
+        for vid_path in video_args:
+            ts_path = None
+            delay = 0.0
+
+            if vid_path in video_start_times:
+                t, ts_path = video_start_times[vid_path]
+                if min_start_time > 0:
+                    delay = max(0.0, t - min_start_time)
+            else:
+                # Fallback logic if timestamp file wasn't found or parsed earlier
+                ts_path = vid_path.replace(".avi", ".txt")
+                if not os.path.exists(ts_path) and "_img_" in vid_path:
+                    ts_path = vid_path.replace("_img_", "_ts_").replace(".avi", ".txt")
+
+            if ts_path and os.path.exists(ts_path):
+                print(f"Playing video: {vid_path} with delay {delay:.3f}s...")
+                # Use absolute path to script if possible
+                script_path = os.path.join(os.path.dirname(__file__), "play_video.py")
+                if not os.path.exists(script_path):
+                    script_path = "quad_deploy/scripts/play_video.py"
+
+                cmd = f"python3 {script_path} {vid_path} {ts_path} --delay {delay}"
+                play_procs.append(run_command(cmd, background=True))
+            else:
+                print(f"Warning: Timestamp file not found for {vid_path}, skipping video.")
+
+        # Wait for all play processes to finish
+        for proc in play_procs:
+            proc.wait()
+
+        print("All bag playbacks finished.")
     except KeyboardInterrupt:
         print("\nPlayback interrupted.")
+        for proc in play_procs:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            except:
+                pass
     finally:
         print("Stopping visualization node...")
-        os.killpg(os.getpgid(vis_proc.pid), signal.SIGTERM)
+        try:
+            os.killpg(os.getpgid(vis_proc.pid), signal.SIGTERM)
+        except:
+            pass
 
 
 def main():
@@ -94,7 +217,7 @@ def main():
 
     # Play command
     play_parser = subparsers.add_parser("play", help="Play a rosbag and run visualization")
-    play_parser.add_argument("bag_path", help="Path to the rosbag folder or file")
+    play_parser.add_argument("bag_paths", nargs="+", help="Paths to the rosbag folders or files (supports multiple)")
     play_parser.add_argument("--raw", action="store_true", help="Show raw image window.")
 
     args = parser.parse_args()
@@ -102,7 +225,7 @@ def main():
     if args.command == "record":
         record_bag(args.output, include_rgb=not args.no_rgb)
     elif args.command == "play":
-        play_and_visualize(args.bag_path, show_raw=args.raw)
+        play_and_visualize(args.bag_paths, show_raw=args.raw)
     else:
         parser.print_help()
 

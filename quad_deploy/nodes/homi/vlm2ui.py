@@ -188,8 +188,8 @@ class VLM2UIBridge(BaseNode):
                     position=(10, 40),
                 )
 
-                cv2.imshow("Raw Image", self.cv_image)
-                key = cv2.waitKey(1)
+            cv2.imshow("Raw Image", self.cv_image)
+            key = cv2.waitKey(1)
 
             if key == ord("q"):
                 self.logger.info("Quitting...")
@@ -257,9 +257,7 @@ def main():
         vlm2ui_node.start_spin_standalone()
     except KeyboardInterrupt:
         pass
-    finally:
-        vlm2ui_node.destroy_node()
-        rclpy.shutdown()
+    # finally block removed to avoid double destruction as start_spin_standalone handles it
 
 
 if __name__ == "__main__":
