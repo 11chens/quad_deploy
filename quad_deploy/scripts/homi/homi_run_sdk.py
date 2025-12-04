@@ -50,7 +50,6 @@ class HomiRunSDK(BaseManager):
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
         self.joystick: JoystickNode = self.nodes["joystick"]
 
-
         # Initialize Low Pass Filters
         # Sample period = 1/50Hz = 0.02s
         # Cutoff frequency: Signals above this will be filtered.
@@ -146,25 +145,7 @@ class HomiRunSDK(BaseManager):
 
         if not self.state == "emergency":
             self.curr_agent_r.handle()
-            # Publish robot twist
-            # lin_vel = self.agents["loco"].base_lin_vel_pred
-            # ang_vel = self.robot.base_ang_vel
-            # if self.robot.sim_run:
-            #     # add noise to simulate real world odom noise
-            #     lin_vel += np.random.normal(0, 0.05, size=3)
-            #     ang_vel += np.random.normal(0, 0.05, size=3)
-
-            # low pass filter (noise frequency is 50 Hz)
-            # self.lin_vel = self.lin_vel_lpf.update(lin_vel)
-            # self.ang_vel = self.ang_vel_lpf.update(ang_vel)
-
-            # self.vlm.publish_robot_twist(lin_vel=lin_vel, ang_vel=ang_vel)
-            # self.vlm.publish_robot_odom(
-            #     position=None,
-            #     orientation_quat=None,
-            #     lin_vel=self.lin_vel,
-            #     ang_vel=self.ang_vel,
-            # )
+            self.vlm.publish_robot_euler_rpy(euler_rpy=self.robot.euler_rpy)
 
     def handshake(self):
         if self.wait_robot:
