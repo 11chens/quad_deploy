@@ -46,6 +46,7 @@ class VLM2BobotBridge(BaseNode):
     def _turn_control_callback(self, msg: Float32):
         turn = msg.data
         self.logger.info(f"""[Sub] turn: {turn}.""")
+        self.turn = turn  # Store the raw message value or flag
         self.target_yaw = turn
         self.initial_yaw = self.nodes["robot"].euler_rpy[2]
 
@@ -88,10 +89,11 @@ class VLM2BobotBridge(BaseNode):
     def reset(self):
         self.start = False
         self.grasp = None
+        self.turn = None  # Reset turn flag
         self.rl_ready = False
         self.turn_done = False
         self.grasp_done = False
         self.vlm_done = False
         self.P_img = None
-        self.target_yaw = 0.0
+        self.target_yaw = None  # Reset target_yaw to None
         self.initial_yaw = self.nodes["robot"].euler_rpy[2]

@@ -30,7 +30,13 @@ class HomiTurnAgent(BaseRLAgent):
         super().parse_config()
 
     def infer(self):
-        yaw_diff = warp2pi(self.target_yaw - self.curr_yaw)
+        # Use absolute yaw control
+        # self.target_yaw is the absolute target yaw in world frame
+        # self.robot.euler_rpy[2] is the current absolute yaw
+        if self.target_yaw is None:
+            return np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+
+        yaw_diff = warp2pi(self.target_yaw - self.robot.euler_rpy[2])
 
         if np.abs(yaw_diff) < self.yaw_threshold:
             desired_yaw_vel = 0.0
@@ -53,7 +59,6 @@ class HomiTurnAgent(BaseRLAgent):
 
     def handle(self):
         self.target_yaw = self.vlm.target_yaw
-        self.initial_yaw = self.vlm.initial_yaw
         super().handle()
         self.vlm.publish_turn_done(self.done)
 
@@ -63,12 +68,12 @@ class HomiTurnAgent(BaseRLAgent):
 
     @property
     def done(self):
-        if self.vlm.turn != "":
-            yaw_diff = warp2pi(self.target_yaw - self.curr_yaw)
+        if self.vlm.turn is not None:
+            yaw_diff = warp2pi(self.target_yaw - self.robot.euler_rpy[2])
             return bool(abs(yaw_diff) < self.yaw_threshold)
         else:
             return False
 
     @property
     def curr_yaw(self):
-        return self.robot.euler_rpy[2] - self.initial_yaw
+        return self.robot.euler_rpy[2]
