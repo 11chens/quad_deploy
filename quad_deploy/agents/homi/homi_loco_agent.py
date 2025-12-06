@@ -38,7 +38,7 @@ class HomiLocoAgent(BaseRLAgent):
         _actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
         actions, vel_pred = self.policy.run(self.output_names, {self.input_name: _actor_input})
         actions = actions[0]
-        self.base_lin_vel_pred[:2] = vel_pred[0]
+        self.base_lin_vel_pred = vel_pred[0]
         return actions
 
     def step(self):
