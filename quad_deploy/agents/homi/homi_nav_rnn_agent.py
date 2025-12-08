@@ -11,13 +11,24 @@ from quad_deploy.config.homi.homi_nav_agent_cfg import HomiNavAgentCfg
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 
 
-class HomiNavAgent(BaseRLAgent):
+class HomiNavRnnAgent(BaseRLAgent):
     def __init__(self, cfg=HomiNavAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
         self.loco_agent: HomiLocoAgent = self.agents["loco"]
         self.cfg: HomiNavAgentCfg
+        
+        # RNN Hidden States
+        self.rnn_hidden_size = 256 # Default, should match training
+        self.rnn_num_layers = 1
+        self.num_latent_int = 16
+        self.num_latent_ext = 16
+        
+        # Initialize hidden states (h_in, c_in for LSTM)
+        # Shape depends on ONNX export. Usually (num_layers, batch=1, hidden_size)
+        self.h_in = np.zeros((self.rnn_num_layers, 1, self.rnn_hidden_size), dtype=np.float32)
+        self.c_in = np.zeros((self.rnn_num_layers, 1, self.rnn_hidden_size), dtype=np.float32)
 
     def prepare_obs_terms(self):
         """Define observation components and their corresponding scale factors."""
@@ -61,15 +72,37 @@ class HomiNavAgent(BaseRLAgent):
     def load_model(self):
         onnx_path = os.path.join(self.logdir, "nav_model", "model.onnx")
         self.policy = ort.InferenceSession(onnx_path)
-        self.input_name = self.policy.get_inputs()[0].name
-        self.output_name = self.policy.get_outputs()[0].name
+        
+        # Get input/output names
+        self.input_names = [inp.name for inp in self.policy.get_inputs()]
+        self.output_names = [out.name for out in self.policy.get_outputs()]
+        
+        # Expected inputs: ['obs', 'h_in', 'c_in'] (order may vary)
+        # Expected outputs: ['action', 'h_out', 'c_out']
 
     def infer(self):
-        _obs_hist_flat = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
-        _cmds_hist_flat = np.expand_dims(self.cmds_hist.buffer.reshape(-1), axis=0)
+        # Prepare flattened history buffers
+        _obs_hist_flat = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0) # (1, num_props * history_len)
+        _cmds_hist_flat = np.expand_dims(self.cmds_hist.buffer.reshape(-1), axis=0) # (1, num_commands * nav_history_len)
+        
+        # Concatenate to form the full observation input
         _actor_input = np.concatenate([_obs_hist_flat, _cmds_hist_flat], axis=1).astype(np.float32)
-        action = self.policy.run([self.output_name], {self.input_name: _actor_input})[0]
-        action = action[0]
+        
+        # Run inference
+        # Inputs: {input_name: obs, h_in_name: h, c_in_name: c}
+        inputs = {
+            self.input_names[0]: _actor_input,
+            self.input_names[1]: self.h_in,
+            self.input_names[2]: self.c_in
+        }
+        
+        outputs = self.policy.run(self.output_names, inputs)
+        
+        # Outputs: [action, h_out, c_out]
+        action = outputs[0][0]
+        self.h_in = outputs[1] # Update hidden state
+        self.c_in = outputs[2] # Update cell state
+        
         return action
 
     def debug_info(self, infos=None):
@@ -109,8 +142,8 @@ class HomiNavAgent(BaseRLAgent):
         action, _, _, _ = self.loco_agent.step()
         self.nav_timestamp += 1  # each step is 0.02s
 
-        # if self.timestamp % 10 == 0:
-        #     self.debug_info(infos=["commands", "P_img", "last_action", "base_lin_vel", "base_ang_vel", "euler_rpy"])
+        if self.timestamp % 10 == 0:
+            self.debug_info(infos=["commands", "P_img", "last_action", "base_lin_vel", "base_ang_vel", "euler_rpy"])
 
         return action, None, None, self.done
 
@@ -119,6 +152,10 @@ class HomiNavAgent(BaseRLAgent):
         # wireless = False: override the joystick commands
         self.loco_agent.wireless = not self.robot.auto
         self.nav_timestamp = 0
+        
+        # Reset RNN states
+        self.h_in = np.zeros((self.rnn_num_layers, 1, self.rnn_hidden_size), dtype=np.float32)
+        self.c_in = np.zeros((self.rnn_num_layers, 1, self.rnn_hidden_size), dtype=np.float32)
 
     @property
     def done(self):
@@ -131,8 +168,8 @@ class HomiNavAgent(BaseRLAgent):
         
         _u = np.tanh(self.pixel_gain * (self.vlm.P_img[0] - self.cx_norm)) * 0.5 + 0.5
         _v = np.tanh(self.pixel_gain * (self.vlm.P_img[1] - self.cy_norm)) * 0.5 + 0.5
-        _depth = self.vlm.P_img[2]
 
+        _depth = self.vlm.P_img[2]
         commands_ = np.array(
             [_u, _v],
             dtype=np.float32,
@@ -143,9 +180,8 @@ class HomiNavAgent(BaseRLAgent):
 
     @property
     def last_action(self):
-        return self.loco_agent.post_cmds
+        return self.loco_agent.pre_cmds
 
     @property
     def timer(self):
         return np.array([min(self.nav_timestamp / self.max_episode_length, 1.0)], dtype=np.float32)
-        # return np.array([0.5], dtype=np.float32)

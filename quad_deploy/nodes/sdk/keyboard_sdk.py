@@ -105,7 +105,7 @@ class KeyboardSDKNode(BaseNode):
         self.joy_stick_msg.ly = self.cmd_vx
         self.joy_stick_msg.lx = -self.cmd_vy
         self.joy_stick_msg.rx = -self.cmd_vyaw
-        self.joy_stick_msg.ry = -self.cmd_pitch
+        self.joy_stick_msg.ry = self.cmd_pitch
 
         self.joy_stick_msg.keys = self.scan_keys()
 

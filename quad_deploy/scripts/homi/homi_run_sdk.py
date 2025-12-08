@@ -50,16 +50,6 @@ class HomiRunSDK(BaseManager):
         self.vlm: VLM2BobotBridge = self.nodes["vlm"]
         self.joystick: JoystickNode = self.nodes["joystick"]
 
-        # Initialize Low Pass Filters
-        # Sample period = 1/50Hz = 0.02s
-        # Cutoff frequency: Signals above this will be filtered.
-        # If noise is 50Hz
-        # we need a cutoff much lower, e.g., 5Hz or 10Hz to smooth it out.
-        # self.lin_vel = np.zeros(3)
-        # self.ang_vel = np.zeros(3)
-        # self.lin_vel_lpf = VectorLPFilter(sample_period=0.02, cutoff_freq=10.0, num_channels=3)
-        # self.ang_vel_lpf = VectorLPFilter(sample_period=0.02, cutoff_freq=10.0, num_channels=3)
-
     def get_state_switch(self):
         """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
         Return None for not switching, or the name of the agent to switch to.
@@ -213,7 +203,7 @@ def main(args=None):
         # ros_base args
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
-        node_freq_hz=50,
+        node_freq_hz=50 if args.nosimrun else 200,
         start_state="cold_start",
         logdir=os.path.expanduser(logdir),
         custom_logger=CustomLogger,

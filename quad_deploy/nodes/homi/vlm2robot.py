@@ -13,7 +13,7 @@ class VLM2BobotBridge(BaseNode):
         # subscriber
         self.turn_sub = self.create_subscription(Float32, "/control/turn", self._turn_control_callback, 1)
         self.grasp_sub = self.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 1)
-        self.P_img_sub = self.create_subscription(PointStamped, "/geometry_msgs/p_img", self._perception_callback, 1)
+        self.P_img_sub = self.create_subscription(PointStamped, "/geometry_msgs/p_img_filtered", self._perception_callback, 1)
         self.vlm_done_sub = self.create_subscription(Bool, "/control/vlm_done", self._vlm_done_callback, 1)
 
         self.turn = None
@@ -52,6 +52,7 @@ class VLM2BobotBridge(BaseNode):
 
     def _perception_callback(self, msg: PointStamped):
         self.P_img = [msg.point.x, msg.point.y, msg.point.z]  # (u, v, depth)
+        self.missing = self.P_img[0] == -1.0 and self.P_img[1] == -1.0 and self.P_img[2] == -1.0
 
     def _vlm_done_callback(self, msg: Bool):
         vlm_done = msg.data

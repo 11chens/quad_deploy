@@ -75,9 +75,9 @@ class BaseRLAgent(BaseAgent):
         self.pre_cmds = self.joy_cmds
 
     def post_commands(self):
-        self.pre_cmds *= np.linalg.norm(self.pre_cmds) >= self.dead_zone
+        # self.pre_cmds *= np.linalg.norm(self.pre_cmds) >= self.dead_zone
         self.post_cmds = self.post_cmds * (1 - self.smooth_factor) + self.pre_cmds * self.smooth_factor
-        self.post_cmds = np.clip(self.post_cmds, self.min_cmds, self.max_cmds)
+        # self.post_cmds = np.clip(self.post_cmds, self.min_cmds, self.max_cmds)
         return self.post_cmds
 
     def update_comannds(self):
