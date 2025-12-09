@@ -6,6 +6,7 @@ class HomiNavAgentCfg(BaseAgentCfg):
     num_commands = 3
     # (vx, vy, vyaw, pitch)
     num_actions = 4
+    add_boost = False
     num_props = num_actions + num_commands + 12 # lin_vel(3), ang_vel(3), gravity(3), rpy(3)
     num_nav_commands = num_commands
     len_history = 5

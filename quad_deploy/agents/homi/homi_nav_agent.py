@@ -129,8 +129,8 @@ class HomiNavAgent(BaseRLAgent):
         if self.vlm.missing:
             return np.array([-1.0, -1.0] + ([-1.0] if self.num_commands == 3 else []), dtype=np.float32)
         
-        _u = np.tanh(self.pixel_gain * (self.vlm.P_img[0] - self.cx_norm)) * 0.5 + 0.5
-        _v = np.tanh(self.pixel_gain * (self.vlm.P_img[1] - self.cy_norm)) * 0.5 + 0.5
+        _u = np.tanh(self.pixel_gain * (self.vlm.P_img[0] - self.cx_norm)) * 0.5 + 0.5 if self.cfg.add_boost else self.vlm.P_img[0]
+        _v = np.tanh(self.pixel_gain * (self.vlm.P_img[1] - self.cy_norm)) * 0.5 + 0.5 if self.cfg.add_boost else self.vlm.P_img[1]
         _depth = self.vlm.P_img[2]
 
         commands_ = np.array(
