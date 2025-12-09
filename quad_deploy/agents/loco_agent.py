@@ -61,4 +61,4 @@ class LocoAgent(BaseRLAgent):
 
     @property
     def commands(self):
-        return self.update_comannds()
+        return self.update_commands()

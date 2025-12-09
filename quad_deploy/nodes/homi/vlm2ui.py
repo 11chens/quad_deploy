@@ -5,6 +5,7 @@ import numpy as np
 from geometry_msgs.msg import Point, PointStamped
 from ros_base.nodes.base_node import BaseNode
 from ros_base.utils.math_utils import CircularBuffer
+from ros_base.utils.realsense_config import RealsenseConfig
 from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, String
 
@@ -19,15 +20,9 @@ class VLM2UIBridge(BaseNode):
 
         self.show_raw_image = show_raw_image
 
-        # img_topic = "/geometry_msgs/image" # used for custom message type
-
-        # img_topic = "/camera/color/image_raw/compressed"
-        # self.image_subscription = self.create_subscription(
-        #     CompressedImage, img_topic, self.image_callback, 1
-        # )
-
-        img_topic = "/camera/color/image_raw"
-        self.image_subscription = self.create_subscription(Image, img_topic, self._img_callback, 1)
+        if self.show_raw_image:
+            img_topic = "/camera/color/image_raw"
+            self.image_subscription = self.create_subscription(Image, img_topic, self._img_callback, 1)
 
         # self.mask_subscription = self.create_subscription(
         #     CompressedImage, "/geometry_msgs/mask", self._mask_callback, 1
@@ -38,9 +33,6 @@ class VLM2UIBridge(BaseNode):
         self.image_timestamp_hist = CircularBuffer(10)  # append timestamp for buffer, 20 Hz, 50 ms
         self.green_image = None  # ~10 Hz, 110 ms
 
-        self.turn_pub = self.create_publisher(String, "/control/turn", 1)
-        self.ui_ready_pub = self.create_publisher(Bool, "/control/ui_ready", 1)
-        self.inquiry_sub = self.create_subscription(Bool, "/control/inquiry", self._inquiry_callback, 1)
         self.P_img_sub = self.create_subscription(PointStamped, "/geometry_msgs/p_img", self._perception_callback, 1)
         self.p_img_filter_sub = self.create_subscription(
             PointStamped, "/geometry_msgs/p_img_filtered", self._p_img_filter_callback, 1
@@ -49,28 +41,10 @@ class VLM2UIBridge(BaseNode):
         self.P_img_filtered = None  # (u, v, depth)
 
         # Visualization state
-        self.vis_width, self.vis_height = 640, 360
+        self.vis_width, self.vis_height = RealsenseConfig.img_width, RealsenseConfig.img_height
         self.vis_canvas = np.zeros((self.vis_height, self.vis_width, 3), dtype=np.uint8)
-        self.create_timer(0.05, self._show_p_img_window)  # 20 Hz visualization
-
-        self.ui_ready_msg = Bool()
-        self.ui_ready = False
-        self.turn_msg = String()
-        self.inquiry = False
-        self.turn = ""
-
-    def publish_ui_ready(self, ui_ready: bool):
-        if ui_ready != self.ui_ready:
-            self.ui_ready = ui_ready
-            self.ui_ready_msg.data = self.ui_ready
-            self.ui_ready_pub.publish(self.ui_ready_msg)
-            self.logger.info(f"""[Pub] ui_ready: {self.ui_ready}.""")
-
-    def publish_turn(self, turn: str):
-        self.turn = turn
-        self.turn_msg.data = self.turn
-        self.turn_pub.publish(self.turn_msg)
-        self.logger.info(f"""[Pub] turn: {self.turn}.""")
+        if not self.show_raw_image:
+            self.create_timer(0.05, self._show_p_img_window)  # 20 Hz visualization
 
     def _p_img_filter_callback(self, msg: PointStamped):
         self.P_img_filtered = [msg.point.x, msg.point.y, msg.point.z]  # (u, v, depth)
@@ -96,12 +70,6 @@ class VLM2UIBridge(BaseNode):
 
         # delay_cv_image = self.cv_image_hist.buffer[-2] if self.cv_image_hist.buffer is not None else self.cv_image
         image = cv2.addWeighted(self.cv_image, 0.5, self.green_image, 0.5, 0)
-
-        # delay_timestamp = self.image_timestamp_hist.buffer[-4] if self.image_timestamp_hist.buffer is not None else 0
-        # mask_timestamp = msg.header.stamp.nanosec
-        # self.logger.info(f"mask_timestamp: {mask_timestamp*1e-6:.4f} ms")
-        # self.logger.info(f"delay_timestamp4: {self.image_timestamp_hist.buffer[-4].item()*1e-6:.4f} ms")
-        # self.logger.info(f"Loop delay: {loop_delay*1000:.1f} ms, Handle delay: {handle_delay*1000:.1f} ms")
 
         if self.P_img is not None:
             self.draw_info_on_img(
@@ -142,28 +110,9 @@ class VLM2UIBridge(BaseNode):
         )
         return image
 
-    def image_callback(self, msg):
-        # msg.data is between 0 and 255
-        np_arr = np.frombuffer(msg.data, np.uint8)
-        self.image_timestamp = msg.header.stamp.nanosec
-        self.cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        self.cv_image_hist.append(self.cv_image)
-        self.image_timestamp_hist.append(self.image_timestamp)
-
-        if self.show_raw_image:
-            cv2.imshow("Raw Image", self.cv_image)
-            key = cv2.waitKey(1)
-
-            if key == ord("q"):
-                self.logger.info("Quitting...")
-                cv2.destroyWindow("Raw Image")
-                self.logger.info("Destroyed Raw Image window.")
-
     def _img_callback(self, msg):
-        self.cv_image = np.frombuffer(msg.data, np.uint8).reshape((msg.height, msg.width, -1))
-
         if self.show_raw_image:
-
+            self.cv_image = np.frombuffer(msg.data, np.uint8).reshape((msg.height, msg.width, -1))
             if self.P_img is not None:
                 # draw P_img circle
                 u = int(self.P_img[0] * self.cv_image.shape[1])

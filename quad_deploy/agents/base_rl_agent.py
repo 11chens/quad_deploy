@@ -77,10 +77,10 @@ class BaseRLAgent(BaseAgent):
     def post_commands(self):
         # self.pre_cmds *= np.linalg.norm(self.pre_cmds) >= self.dead_zone
         self.post_cmds = self.post_cmds * (1 - self.smooth_factor) + self.pre_cmds * self.smooth_factor
-        # self.post_cmds = np.clip(self.post_cmds, self.min_cmds, self.max_cmds)
+        self.post_cmds = np.clip(self.post_cmds, self.min_cmds, self.max_cmds)
         return self.post_cmds
 
-    def update_comannds(self):
+    def update_commands(self):
         # wireless is False: get commands from high level output
         # wireless is True: get commands from joystick
         if self.wireless:

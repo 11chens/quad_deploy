@@ -60,4 +60,4 @@ class HomiLocoAgent(BaseRLAgent):
     def commands(self):
         # wireless is False: get commands from high level output
         # wireless is True: get commands from joystick
-        return self.update_comannds()
+        return self.update_commands()
