@@ -16,12 +16,12 @@ class HomiNavAgentCfg(BaseAgentCfg):
     cy_norm = 0.5
     max_episode_length_s = 9  # max episode length in seconds
 
-    smooth_factor = 0.1
+    smooth_factor = 0.2
 
-    limit_vx = [0.15, 0.5]  # [m/s]
-    limit_vy = [-0.3, 0.3]  # [m/s]
+    limit_vx = [0.18, 0.5]  # [m/s]
+    limit_vy = [-0.1, 0.1]  # [m/s]
     limit_vyaw = [-1.0, 1.0]  # [rad/s]
-    limit_pitch = [-3.14 / 6, 3.14 / 6]  # [rad]
+    limit_pitch = [-3.14/6, 3.14/6]  # [rad]
 
     min_action = [limit_vx[0], limit_vy[0], limit_vyaw[0], limit_pitch[0]]
     max_action = [limit_vx[1], limit_vy[1], limit_vyaw[1], limit_pitch[1]]

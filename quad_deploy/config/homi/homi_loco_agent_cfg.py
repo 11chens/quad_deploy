@@ -6,8 +6,8 @@ class HomiLocoAgentCfg(BaseAgentCfg):
     num_props = 47
     len_history = 10
     # [lin_vel, lin_vel, ang_vel, pitch]
-    min_cmds = [-0.5, -0.5, -1.0, -0.5]
-    max_cmds = [1.0, 0.5, 1.0, 0.5]
+    min_cmds = [-0.5, -0.5, -1.0, -3.14/6 - 0.05]
+    max_cmds = [1.0, 0.5, 1.0, 3.14/6 + 0.05]
 
     class obs_scale(BaseAgentCfg.obs_scale):
         lin_vel = 2.0
