@@ -1,4 +1,4 @@
-from geometry_msgs.msg import Point, PointStamped, Twist
+from geometry_msgs.msg import Point, PointStamped, PolygonStamped, Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from ros_base.nodes.base_node import BaseNode
@@ -13,13 +13,19 @@ class VLM2BobotBridge(BaseNode):
         # subscriber
         self.turn_sub = self.create_subscription(Float32, "/control/turn", self._turn_control_callback, 1)
         self.grasp_sub = self.create_subscription(Bool, "/control/grasp", self._grasp_control_callback, 1)
-        self.P_img_sub = self.create_subscription(PointStamped, "/geometry_msgs/p_img_filtered", self._perception_callback, 1)
+        self.P_img_sub = self.create_subscription(
+            PointStamped, "/geometry_msgs/p_img_filtered", self._p_img_callback, 1
+        )
         self.vlm_done_sub = self.create_subscription(Bool, "/control/vlm_done", self._vlm_done_callback, 1)
+        self.sigma_filter_sub = self.create_subscription(
+            PolygonStamped, "/geometry_msgs/sigma_points_filtered", self._sigma_points_callback, 1
+        )
 
         self.turn = None
         self.grasp = None
         self.P_img = None  # (u, v, depth)
         self.vlm_done = False
+        self.sigma_3d_cam = None  # List of [x, y, z] in camera frame
 
         # publisher
         self.rl_ready_pub = self.create_publisher(Bool, "/control/rl_ready", 1)
@@ -50,7 +56,13 @@ class VLM2BobotBridge(BaseNode):
         self.target_yaw = turn
         self.initial_yaw = self.nodes["robot"].euler_rpy[2]
 
-    def _perception_callback(self, msg: PointStamped):
+    def _sigma_points_callback(self, msg: PolygonStamped):
+        points_cam = []
+        for p in msg.polygon.points:
+            points_cam.append([p.x, p.y, p.z])
+        self.sigma_3d_cam = points_cam  # List of [x, y, z] in camera frame
+
+    def _p_img_callback(self, msg: PointStamped):
         self.P_img = [msg.point.x, msg.point.y, msg.point.z]  # (u, v, depth)
         self.missing = self.P_img[0] == -1.0 and self.P_img[1] == -1.0 and self.P_img[2] == -1.0
 
@@ -98,3 +110,4 @@ class VLM2BobotBridge(BaseNode):
         self.P_img = None
         self.target_yaw = None  # Reset target_yaw to None
         self.initial_yaw = self.nodes["robot"].euler_rpy[2]
+        self.sigma_3d_cam = None

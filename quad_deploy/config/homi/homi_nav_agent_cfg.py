@@ -3,11 +3,11 @@ from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 
 class HomiNavAgentCfg(BaseAgentCfg):
     # (u, v, depth)
-    num_commands = 3
+    num_commands = 3 * 7  # 7 points
     # (vx, vy, vyaw, pitch)
     num_actions = 4
     add_boost = False
-    num_props = num_actions + num_commands + 12  # lin_vel(3), ang_vel(3), gravity(3), rpy(3)
+    num_props = num_actions + num_commands + 1 + 9  # lin_vel(3), ang_vel(3), gravity(3)
     num_nav_commands = num_commands
     len_history = 5
     nav_length_history = 10
@@ -18,10 +18,10 @@ class HomiNavAgentCfg(BaseAgentCfg):
 
     smooth_factor = 0.2
 
-    limit_vx = [0.18, 0.5]  # [m/s]
-    limit_vy = [-0.1, 0.1]  # [m/s]
+    limit_vx = [-0.5, 0.5]  # [m/s]
+    limit_vy = [-0.5, 0.5]  # [m/s]
     limit_vyaw = [-1.0, 1.0]  # [rad/s]
-    limit_pitch = [-3.14/6, 3.14/6]  # [rad]
+    limit_pitch = [-3.14 / 6, 3.14 / 6]  # [rad]
 
     min_action = [limit_vx[0], limit_vy[0], limit_vyaw[0], limit_pitch[0]]
     max_action = [limit_vx[1], limit_vy[1], limit_vyaw[1], limit_pitch[1]]

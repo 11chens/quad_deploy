@@ -13,7 +13,9 @@ from ros_base.utils.math_utils import VectorLPFilter
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
-from quad_deploy.agents.homi.homi_nav_agent import HomiNavAgent
+
+# from quad_deploy.agents.homi.homi_nav_agent import HomiNavAgent
+from quad_deploy.agents.homi.homi_nav_rnn_agent import HomiNavRnnAgent as HomiNavAgent
 from quad_deploy.agents.homi.homi_turn_agent import HomiTurnAgent
 from quad_deploy.agents.stand_agent import StandAgent
 from quad_deploy.nodes.homi.gripper_node import GripperNode
@@ -80,9 +82,9 @@ class HomiRunSDK(BaseManager):
             return "turn"
 
         if self.state == "turn" and self.wait_vlm:
-            self.logger.log_once("Waiting for VLM message: <P_img>")
-            if self.vlm.P_img is not None:
-                self.logger.info("VLM message <P_img> received, starting navigation!")
+            self.logger.log_once("Waiting for VLM message: <sigma_3d_cam>")
+            if self.vlm.sigma_3d_cam is not None:
+                self.logger.info("VLM message <sigma_3d_cam> received, starting navigation!")
                 return "navigation"
 
         if self.state == "navigation" and self.vlm.grasp is not None:

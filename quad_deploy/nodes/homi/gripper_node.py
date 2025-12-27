@@ -77,7 +77,7 @@ class GripperNode(BaseNode):
             )
             self.start_time = self.timestamp
 
-        if grasp:
+        if grasp:  # True: pick, False: place
             try:
                 self.send_hex_to_serial_port(self.grasp_data)
                 self.logger.info("Start grasping - sent grasp command to gripper.")
