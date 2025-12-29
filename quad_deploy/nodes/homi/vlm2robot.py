@@ -2,7 +2,7 @@ from geometry_msgs.msg import Point, PointStamped, PolygonStamped, Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from ros_base.nodes.base_node import BaseNode
-from std_msgs.msg import Bool, Float32, String
+from std_msgs.msg import Bool, Float32, Float32MultiArray, String
 
 
 class VLM2BobotBridge(BaseNode):
@@ -41,9 +41,6 @@ class VLM2BobotBridge(BaseNode):
         self.euler_pub = self.create_publisher(PointStamped, "/control/euler_rpy", 1)
         self.euler_msg = PointStamped()
 
-        self.target_yaw = 0.0
-        self.initial_yaw = 0.0
-
     def _grasp_control_callback(self, msg: Bool):
         grasp = msg.data
         self.logger.info(f"""[Sub] grasp: {grasp}.""")
@@ -51,10 +48,9 @@ class VLM2BobotBridge(BaseNode):
 
     def _turn_control_callback(self, msg: Float32):
         turn = msg.data
+        self.yaw_diff = turn
         self.logger.info(f"""[Sub] turn: {turn}.""")
         self.turn = turn  # Store the raw message value or flag
-        self.target_yaw = turn
-        self.initial_yaw = self.nodes["robot"].euler_rpy[2]
 
     def _sigma_points_callback(self, msg: PolygonStamped):
         points_cam = []
@@ -108,6 +104,5 @@ class VLM2BobotBridge(BaseNode):
         self.grasp_done = False
         self.vlm_done = False
         self.P_img = None
-        self.target_yaw = None  # Reset target_yaw to None
-        self.initial_yaw = self.nodes["robot"].euler_rpy[2]
+        self.yaw_diff = None
         self.sigma_3d_cam = None

@@ -23,30 +23,22 @@ class HomiTurnAgent(BaseRLAgent):
         self.min_yaw_vel = 0.5
 
         self.k_p = 0.5
-        self.target_yaw = 0.0
-        self.initial_yaw = 0.0
+        self.yaw_diff = 0.0
+        self.start_turn_time = None
+        self.duration = 3.0
 
     def parse_config(self):
         super().parse_config()
 
     def infer(self):
-        # Use absolute yaw control
-        # self.target_yaw is the absolute target yaw in world frame
-        # self.robot.euler_rpy[2] is the current absolute yaw
-        if self.target_yaw is None:
+        if self.yaw_diff is None:
             return np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
 
-        yaw_diff = warp2pi(self.target_yaw - self.robot.euler_rpy[2])
-
-        if np.abs(yaw_diff) < self.yaw_threshold:
-            desired_yaw_vel = 0.0
-        else:
-            desired_yaw_vel = (
-                yaw_diff
-                / np.abs(yaw_diff)
-                * np.clip(np.abs(self.k_p * yaw_diff), a_min=self.min_yaw_vel, a_max=self.max_yaw_vel)
-            )
-
+        desired_yaw_vel = (
+            self.yaw_diff
+            / np.abs(self.yaw_diff)
+            * np.clip(np.abs(self.k_p * self.yaw_diff), a_min=self.min_yaw_vel, a_max=self.max_yaw_vel)
+        )
         action = np.array([0.0, 0.0, desired_yaw_vel, 0.0], dtype=np.float32)
 
         return action
@@ -58,22 +50,18 @@ class HomiTurnAgent(BaseRLAgent):
         return action, None, None, self.done
 
     def handle(self):
-        self.target_yaw = self.vlm.target_yaw
+        self.yaw_diff = self.vlm.yaw_diff
         super().handle()
         self.vlm.publish_turn_done(self.done)
 
     def reset(self):
         # wireless = False: override the joystick commands
         self.loco_agent.wireless = not self.robot.auto
+        self.start_turn_time = time.time()
 
     @property
     def done(self):
         if self.vlm.turn is not None:
-            yaw_diff = warp2pi(self.target_yaw - self.robot.euler_rpy[2])
-            return bool(abs(yaw_diff) < self.yaw_threshold)
+            return time.time() - self.start_turn_time > self.duration
         else:
             return False
-
-    @property
-    def curr_yaw(self):
-        return self.robot.euler_rpy[2]
