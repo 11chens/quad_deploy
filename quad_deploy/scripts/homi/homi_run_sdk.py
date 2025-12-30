@@ -68,6 +68,11 @@ class HomiRunSDK(BaseManager):
             self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
             return "human_teleop"
 
+        # if self.joystick.A:
+        #     grasp = not self.gripper.grasp_state  # Toggle grasp state
+        #     self.gripper.handle(grasp=grasp)
+        #     return None
+
         # ================ Switch RL agent ================ #
         if (self.state == "cold_start" or self.state == "recovery") and self.agents["stand"].done:
             self.logger.log_once("[stand] agent returns done, waiting for press [X] to switch.")
@@ -82,16 +87,17 @@ class HomiRunSDK(BaseManager):
             return "turn"
 
         if self.state == "turn" and self.wait_vlm:
-            self.logger.log_once("Waiting for VLM message: <sigma_3d_cam>")
-            if self.vlm.sigma_3d_cam is not None:
-                self.logger.info("VLM message <sigma_3d_cam> received, starting navigation!")
+            self.logger.log_once("Waiting for VLM message: <sigma_3d_cam> and <object_ready>.")
+            if self.vlm.sigma_3d_cam is not None and self.vlm.object_ready:
+                self.logger.info("VLM message <sigma_3d_cam> and <object_ready> received, starting navigation!")
                 return "navigation"
 
-        if self.state == "navigation" and self.vlm.grasp is not None:
+        if self.state == "navigation" and self.joystick.A:
             return "gripper_start"
 
         if self.state == "gripper_start" and self.gripper.done:
-            return "gripper_done"
+            self.vlm.publish_grasp_done(grasp_done=True)
+            return "turn"  # after grasp done, turn to box
 
         if self.state == "gripper_done" and self.vlm.vlm_done:
             return "turn"
@@ -130,10 +136,11 @@ class HomiRunSDK(BaseManager):
 
         elif switch_to_state == "gripper_start":
             self.gripper.start_time = self.timestamp
-            self.gripper.handle(grasp=self.vlm.grasp)
+            grasp = not self.gripper.grasp_state  # Toggle grasp state
+            self.gripper.handle(grasp=grasp)
 
-        elif switch_to_state == "gripper_done":
-            self.vlm.publish_grasp_done(grasp_done=True)
+        # elif switch_to_state == "gripper_done":
+        #     self.vlm.publish_grasp_done(grasp_done=True)
 
         if not self.state == "emergency":
             self.curr_agent_r.handle()
@@ -167,8 +174,8 @@ def update_dict(
     if args.cam_type.lower() == "none":
         mp_nodes_dict.pop("camera")
 
-    # if args.gripper.lower() == "none":
-    #     cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty20 pty,raw,echo=0,link=/tmp/pty21 &"
+    if args.gripper.lower() == "none":
+        cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11 &"
 
     return nodes_dict, agents_dict, mp_nodes_dict, cmds_dict
 

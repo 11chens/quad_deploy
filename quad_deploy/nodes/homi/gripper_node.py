@@ -20,8 +20,16 @@ class GripperNode(BaseNode):
         self._support_gripper_types = ["two_fingers", "three_fingers"]
         self.gripper_type = gripper_type
         self.parse_config()
-        self.duration = 2  # duration to finish grasp or release action, in seconds
+        self.duration = 0.2  # duration to finish grasp or release action, in seconds
         self.start_time = None
+
+        self.serial_port = serial.Serial(
+            port=self.port,
+            baudrate=115200,  # Baud rate, can be modified as needed
+            timeout=1,
+        )
+
+        self.handle(grasp=False)  # initialize to released state
 
     def parse_config(self):
         """Parse configuration for different gripper types."""
@@ -63,19 +71,15 @@ class GripperNode(BaseNode):
 
     def handle(self, grasp):
         """Handle the gripper action based on the grasp command."""
-        if self.gripper_type not in self._support_gripper_types:
-            self.logger.warning(f"Gripper type '{self.gripper_type}' not supported. No action taken.")
-            self.start_time = self.timestamp
-            return
+        # if self.gripper_type not in self._support_gripper_types:
+        #     self.logger.warning(f"Gripper type '{self.gripper_type}' not supported. No action taken.")
+        #     self.start_time = self.timestamp
+        #     return
 
-        if not hasattr(self, "serial_port"):
-            # First in, initialize serial port and start time
-            self.serial_port = serial.Serial(
-                port=self.port,
-                baudrate=115200,  # Baud rate, can be modified as needed
-                timeout=1,
-            )
+        if self.start_time is None:
             self.start_time = self.timestamp
+
+        self.grasp_state = grasp
 
         if grasp:  # True: pick, False: place
             try:

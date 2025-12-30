@@ -23,7 +23,7 @@ class HomiTurnAgent(BaseRLAgent):
         self.min_yaw_vel = 0.5
 
         self.k_p = 0.5
-        self.yaw_diff = 0.0
+        self.target_yaw_diff = 0.0
         self.start_turn_time = None
         self.duration = 3.0
 
@@ -31,7 +31,8 @@ class HomiTurnAgent(BaseRLAgent):
         super().parse_config()
 
     def infer(self):
-        if self.yaw_diff is None:
+        if self.done or self.yaw_diff is None:
+            # Return zero action when done or yaw_diff is None
             return np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
 
         desired_yaw_vel = (
@@ -44,13 +45,19 @@ class HomiTurnAgent(BaseRLAgent):
         return action
 
     def step(self):
-        action = self.infer()
-        self.loco_agent.pre_cmds = action
+        action_ = self.infer()
+        self.loco_agent.pre_cmds = action_
         action, _, _, _ = self.loco_agent.step()
+
+        if self.done:
+            # Ensure zero action is sent when done
+            if self.timestamp % 100 == 0:
+                self.logger.info(f"Turn action done, yaw_diff: {self.yaw_diff:.3f}, yaw_cmd: {action_[2]}.")
+                self.loco_agent.pre_cmds = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+
         return action, None, None, self.done
 
     def handle(self):
-        self.yaw_diff = self.vlm.yaw_diff
         super().handle()
         self.vlm.publish_turn_done(self.done)
 
@@ -58,10 +65,24 @@ class HomiTurnAgent(BaseRLAgent):
         # wireless = False: override the joystick commands
         self.loco_agent.wireless = not self.robot.auto
         self.start_turn_time = time.time()
+        self.robot_yaw_start = self.robot.euler_rpy[2]
+        self.target_yaw_diff = self.vlm.yaw_diff
+
+    @property
+    def yaw_diff(self):
+        if self.vlm.yaw_diff is not None:
+            current_yaw = self.robot.euler_rpy[2]
+            desired_yaw = self.robot_yaw_start + self.vlm.yaw_diff
+            yaw_diff = warp2pi(desired_yaw - current_yaw)
+            return yaw_diff
+        else:
+            return None
 
     @property
     def done(self):
         if self.vlm.turn is not None:
-            return time.time() - self.start_turn_time > self.duration
+            # Combine time-based and yaw_diff-based conditions
+            yaw_aligned = abs(self.yaw_diff) < self.yaw_threshold if self.yaw_diff is not None else False
+            return bool(yaw_aligned)  # Ensure the return value is always a boolean
         else:
             return False
