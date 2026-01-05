@@ -20,12 +20,14 @@ class VLM2BobotBridge(BaseNode):
         self.sigma_filter_sub = self.create_subscription(
             PolygonStamped, "/geometry_msgs/sigma_points_filtered", self._sigma_points_callback, 1
         )
+        self.object_ready_sub = self.create_subscription(Bool, "/control/object_ready", self._object_ready_callback, 1)
 
         self.turn = None
         self.grasp = None
         self.P_img = None  # (u, v, depth)
         self.vlm_done = False
         self.sigma_3d_cam = None  # List of [x, y, z] in camera frame
+        self.object_ready = False
 
         # publisher
         self.rl_ready_pub = self.create_publisher(Bool, "/control/rl_ready", 1)
@@ -67,6 +69,11 @@ class VLM2BobotBridge(BaseNode):
         self.vlm_done = vlm_done
         self.logger.info(f"""[Sub] vlm_done: {vlm_done}.""")
 
+    def _object_ready_callback(self, msg: Bool):
+        object_ready = msg.data
+        self.object_ready = object_ready
+        self.logger.info(f"""[Sub] object_ready: {object_ready}.""")
+
     def publish_rl_ready(self, rl_ready: bool):
         if not self.rl_ready and rl_ready:  # False -> True
             self.rl_ready = rl_ready
@@ -103,6 +110,7 @@ class VLM2BobotBridge(BaseNode):
         self.turn_done = False
         self.grasp_done = False
         self.vlm_done = False
+        self.object_ready = False
         self.P_img = None
         self.yaw_diff = None
         self.sigma_3d_cam = None
