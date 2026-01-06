@@ -87,10 +87,16 @@ class HomiRunSDK(BaseManager):
             return "turn"
 
         if self.state == "turn" and self.wait_vlm:
-            self.logger.log_once("Waiting for VLM message: <sigma_3d_cam> and <object_ready>.")
-            if self.vlm.sigma_3d_cam is not None and self.vlm.object_ready:
-                self.logger.info("VLM message <sigma_3d_cam> and <object_ready> received, starting navigation!")
-                return "navigation"
+            if not self.robot.sim_run:
+                self.logger.log_once("Waiting for VLM message: <sigma_3d_cam> and <object_ready>.")
+                if self.vlm.sigma_3d_cam is not None and self.vlm.object_ready:
+                    self.logger.info("VLM message <sigma_3d_cam> and <object_ready> received, starting navigation!")
+                    return "navigation"
+            else:
+                self.logger.log_once("Waiting for VLM message: <sigma_3d_cam>.")
+                if self.vlm.sigma_3d_cam is not None:
+                    self.logger.info("VLM message <sigma_3d_cam> received, starting navigation!")
+                    return "navigation"
 
         if self.state == "navigation" and self.joystick.A:
             return "gripper_start"
