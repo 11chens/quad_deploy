@@ -35,6 +35,7 @@ class BaseRLAgent(BaseAgent):
 
         self.obs_scale = self.cfg.obs_scale
         self.smooth_factor = self.cfg.smooth_factor
+        self.post_clip = self.cfg.post_clip
         self.dead_zone = self.cfg.dead_zone
         self.min_cmds = np.array(self.cfg.min_cmds, dtype=np.float32)
         self.max_cmds = np.array(self.cfg.max_cmds, dtype=np.float32)
@@ -77,7 +78,8 @@ class BaseRLAgent(BaseAgent):
     def post_commands(self):
         # self.pre_cmds *= np.linalg.norm(self.pre_cmds) >= self.dead_zone
         self.post_cmds = self.post_cmds * (1 - self.smooth_factor) + self.pre_cmds * self.smooth_factor
-        self.post_cmds = np.clip(self.post_cmds, self.min_cmds, self.max_cmds)
+        if self.post_clip:
+            self.post_cmds = np.clip(self.post_cmds, self.min_cmds, self.max_cmds)
         return self.post_cmds
 
     def update_commands(self):

@@ -2,6 +2,7 @@ class BaseAgentCfg:
     decimation = 4  # infer every 4 steps
     smooth_factor = 0.1
     dead_zone = 0.0
+    post_clip = True
     min_cmds = [-0.5, -0.5, -1.0]
     max_cmds = [1.0, 0.5, 1.0]
 

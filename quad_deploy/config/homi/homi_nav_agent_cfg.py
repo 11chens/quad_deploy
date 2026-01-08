@@ -6,7 +6,7 @@ class HomiNavAgentCfg(BaseAgentCfg):
     num_commands = 3 * 7  # 7 points
     # (vx, vy, vyaw, pitch)
     num_actions = 4
-    add_boost = False
+    post_clip = False
     num_props = num_actions + num_commands + 1 + 9  # lin_vel(3), ang_vel(3), gravity(3)
     num_nav_commands = num_commands
     len_history = 5
@@ -20,7 +20,7 @@ class HomiNavAgentCfg(BaseAgentCfg):
 
     limit_vx = [-0.5, 0.5]  # [m/s]
     limit_vy = [-0.5, 0.5]  # [m/s]
-    limit_vyaw = [-1.0, 1.0]  # [rad/s]
+    limit_vyaw = [-0.5, 0.5]  # [rad/s]
     limit_pitch = [-3.14 / 6, 3.14 / 6]  # [rad]
 
     min_action = [limit_vx[0], limit_vy[0], limit_vyaw[0], limit_pitch[0]]

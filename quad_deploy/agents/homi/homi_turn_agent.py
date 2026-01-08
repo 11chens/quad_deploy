@@ -15,8 +15,8 @@ class HomiTurnAgent(BaseRLAgent):
     def __init__(self, cfg=BaseAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
-        self.vlm: VLM2BobotBridge = self.nodes["vlm"]
-        self.loco_agent: HomiLocoAgent = self.agents["loco"]
+        self.vlm: VLM2BobotBridge = self.nodes.get("vlm")
+        self.loco_agent: HomiLocoAgent = self.agents.get("loco")
 
         self.yaw_threshold = 0.05
         self.max_yaw_vel = 1.0
@@ -80,7 +80,7 @@ class HomiTurnAgent(BaseRLAgent):
 
     @property
     def done(self):
-        if self.vlm.turn is not None:
+        if hasattr(self, "vlm") and self.vlm is not None and self.vlm.turn is not None:
             # Combine time-based and yaw_diff-based conditions
             yaw_aligned = abs(self.yaw_diff) < self.yaw_threshold if self.yaw_diff is not None else False
             return bool(yaw_aligned)  # Ensure the return value is always a boolean

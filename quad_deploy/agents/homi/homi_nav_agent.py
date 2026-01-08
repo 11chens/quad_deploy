@@ -14,18 +14,20 @@ class HomiNavAgent(BaseRLAgent):
     def __init__(self, cfg=HomiNavAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
-        self.vlm: VLM2BobotBridge = self.nodes["vlm"]
-        self.loco_agent: HomiLocoAgent = self.agents["loco"]
+        self.vlm: VLM2BobotBridge = self.nodes.get("vlm")
+        self.loco_agent: HomiLocoAgent = self.agents.get("loco")
         self.cfg: HomiNavAgentCfg
+        self.loco_agent.post_clip = self.cfg.post_clip
+        self.orig_actions = np.zeros(self.cfg.num_actions, dtype=np.float32)
 
     def prepare_obs_terms(self):
         """Define observation components and their corresponding scale factors."""
-        # total dim: 17:
+        # total dim: 3 + 3 + 3 + 21 + 1 + 4 = 35:
         self.observation_components = [
             (self.loco_agent.base_lin_vel_pred, self.obs_scale.lin_vel),  # dim 3
             (self.robot.base_ang_vel, self.obs_scale.ang_vel),  # dim 3
             (self.robot.projected_gravity, 1.0),  # dim 3
-            (self.commands, 1.0),  # dim 3
+            (self.commands, 1.0),  # dim 3 * 7
             (self.task_flag, 1.0),  # dim 1
             (self.last_action, 1.0),  # dim 4
         ]
@@ -71,7 +73,7 @@ class HomiNavAgent(BaseRLAgent):
                 )
             elif info == "commands":
                 commands = self.commands
-                self.logger.info(f"[Nav] commands: x={commands[0]:.3f}, y={commands[1]:.3f}, z={commands[2]:.3f}")
+                self.logger.info(f"[Nav] sigma points: x={commands[0]:.3f}, y={commands[1]:.3f}, z={commands[2]:.3f}")
             elif info == "base_ang_vel":
                 base_ang_vel = self.robot.base_ang_vel
                 self.logger.info(
@@ -90,8 +92,10 @@ class HomiNavAgent(BaseRLAgent):
         if self.state == "gripper_start":
             action[:3] = 0.0  # stop moving when gripper is working, only keep the pitch command
 
-        self.action_before_clip = np.clip(action, [-3.0] * self.num_actions, [3.0] * self.num_actions)
-        self.loco_agent.pre_cmds = np.clip(self.action_before_clip, self.cfg.min_action, self.cfg.max_action)
+        self.orig_actions = np.clip(
+            action, [-3.0] * self.num_actions, [3.0] * self.num_actions
+        )  # in case the model outputs large values
+        self.loco_agent.pre_cmds = np.clip(self.orig_actions, self.cfg.min_action, self.cfg.max_action)
 
         action, _, _, _ = self.loco_agent.step()
         self.nav_timestamp += 1  # each step is 0.02s
@@ -105,7 +109,6 @@ class HomiNavAgent(BaseRLAgent):
         # wireless = False: override the joystick commands
         self.loco_agent.wireless = not self.robot.auto
         self.nav_timestamp = 0
-        self.action_before_clip = np.zeros(self.num_actions, dtype=np.float32)
 
     @property
     def done(self):
@@ -128,4 +131,4 @@ class HomiNavAgent(BaseRLAgent):
 
     @property
     def last_action(self):
-        return self.loco_agent.post_cmds
+        return self.orig_actions

@@ -9,7 +9,6 @@ from ros_base.nodes.camera.camera_node import CameraNode
 from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode as JoystickNode
 from ros_base.utils.args_debug import add_debug_mode
 from ros_base.utils.logger import CustomLogger
-from ros_base.utils.math_utils import VectorLPFilter
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
@@ -169,8 +168,8 @@ def update_dict(
         args.cam_type = "none"
         args.gripper = "none"
         cmds_dict["keyboard"] = (
-            "bash -c 'LD_LIBRARY_PATH=$HOME/miniforge3/envs/humble/lib:$LD_LIBRARY_PATH; source"
-            " ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
+            # "bash -c 'LD_LIBRARY_PATH=$HOME/miniforge3/envs/humble/lib:$LD_LIBRARY_PATH; source ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
+            "bash -c 'source ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
         )
 
         from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
@@ -223,7 +222,6 @@ def main(args=None):
         logdir=os.path.expanduser(logdir),
         custom_logger=CustomLogger,
         # log_freq=True,
-        main_loop_timer=True,
         # custom args
         auto=args.auto,
         dry_run=not args.nodryrun,
