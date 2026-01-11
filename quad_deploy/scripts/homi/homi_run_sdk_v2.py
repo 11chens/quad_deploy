@@ -74,6 +74,9 @@ def setup_environment(args):
         nodes_dict["keyboard"] = KeyboardSDKNode
         # Ensure `source ~/ros2_ws/install/setup.bash` first
         cmds_dict["keyboard"] = "bash -c 'ros2 run keyboard keyboard' "
+        print(
+            "Note: Please ensure ROS2 environment is sourced for keyboard node:\n`source ~/ros2_ws/install/setup.bash`"
+        )
 
     if args.cam_type.lower() == "none":
         mp_nodes_dict.pop("camera", None)

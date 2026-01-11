@@ -34,6 +34,28 @@ class HomiLocoAgent(BaseRLAgent):
     def parse_config(self):
         super().parse_config()
 
+    def debug_info(self, infos=None):
+        for info in infos:
+            if info == "base_lin_vel":
+                base_lin_vel = self.base_lin_vel_pred
+                self.logger.info(
+                    f"[Loco] base_lin_vel: x={base_lin_vel[0]:.3f}, y={base_lin_vel[1]:.3f}, z={base_lin_vel[2]:.3f}"
+                )
+            elif info == "commands":
+                commands = self.commands
+                self.logger.info(
+                    f"[Loco] commands: x={commands[0]:.3f}, y={commands[1]:.3f}, z={commands[2]:.3f},"
+                    f" pitch={commands[3]:.3f}"
+                )
+            elif info == "base_ang_vel":
+                base_ang_vel = self.robot.base_ang_vel
+                self.logger.info(
+                    f"[Loco] base_ang_vel: x={base_ang_vel[0]:.3f}, y={base_ang_vel[1]:.3f}, z={base_ang_vel[2]:.3f}"
+                )
+            elif info == "pitch":
+                pitch = self.robot.euler_rpy[1]
+                self.logger.info(f"[Loco] pitch: {pitch:.3f}")
+
     def infer(self):
         _actor_input = np.expand_dims(self.obs_hist.buffer.reshape(-1), axis=0)
         actions, vel_pred = self.policy.run(self.output_names, {self.input_name: _actor_input})
@@ -44,8 +66,8 @@ class HomiLocoAgent(BaseRLAgent):
     def step(self):
         self.get_observation()
         action = self.infer()
-        # if (self.timestamp) % 10 == 0:
-        #     self.logger.info(f"pitch: {self.robot.euler_rpy[1]:.4f}")
+        # if (self.timestamp) % 1 == 0:
+        #     self.debug_info(infos=["commands", "base_lin_vel", "base_ang_vel", "pitch"])
         return action, None, None, self.done
 
     def reset(self):
