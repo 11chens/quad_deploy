@@ -45,8 +45,9 @@ def compare_nav_logs(sim_path, real_path):
 
     # Mapping for descriptive titles
     titles_map = {
-        "euler_rpy": ["Roll", "Pitch", "Yaw"],
+        "base_lin_vel": ["Lin Vel X", "Lin Vel Y", "Lin Vel Z"],
         "base_ang_vel": ["Ang Vel X", "Ang Vel Y", "Ang Vel Z"],
+        "euler_rpy": ["Roll", "Pitch", "Yaw"],
         "projected_gravity": ["Gravity X", "Gravity Y", "Gravity Z"],
         "nav_commands": ["Sigma X", "Sigma Y", "Sigma Z"],
         "actions": ["Action Vx", "Action Vy", "Action Vyaw", "Action Pitch"],

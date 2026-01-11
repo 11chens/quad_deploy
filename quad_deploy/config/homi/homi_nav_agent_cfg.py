@@ -9,11 +9,9 @@ class HomiNavAgentCfg(BaseAgentCfg):
     # (vx, vy, vyaw, pitch)
     num_actions = 4
     post_clip = False
-    # num_props = num_actions + num_commands + 1 + 9  # lin_vel(3), ang_vel(3), gravity(3)
-    num_props = num_actions + num_commands + 47
+    num_props = num_actions + num_commands + 1 + 9  # lin_vel(3), ang_vel(3), gravity(3)
     num_nav_commands = num_commands
-    len_history = 10
-    nav_length_history = 10
+    len_history = 5
     pixel_gain = 10
     cx_norm = 0.5
     cy_norm = 0.5

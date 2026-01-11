@@ -27,34 +27,24 @@ class HomiNavAgent(BaseRLAgent):
 
     def prepare_obs_terms(self):
         """Define observation components and their corresponding scale factors."""
-        # total dimension:  3 + 3 + 4 + 1 + 12 + 12 + 12 + 9 + 4 = 60
+        # total dimension:  3 + 3 + 3 + 9 + 1 + 4 = 23
         self.observation_components = [
-            # (self.loco_agent.base_lin_vel_pred, self.obs_scale.lin_vel),  # dim 3
+            (self.loco_agent.base_lin_vel_pred, self.obs_scale.lin_vel),  # dim 3
             (self.robot.base_ang_vel, self.obs_scale.ang_vel),  # dim 3
             (self.robot.projected_gravity, 1.0),  # dim 3
-            (self.orig_actions, 1.0),  # dim 4
-            (self.task_flag, 1.0),  # dim 1
-            (self.robot.dof_pos_rel, self.obs_scale.dof_pos),  # dim 12
-            (self.robot.dof_vel, self.obs_scale.dof_vel),  # dim 12
-            (self.robot.last_action, 1.0),  # dim 12
             (self.commands, 1.0),  # dim 9
+            (self.task_flag, 1.0),  # dim 1
             (self.last_action, 1.0),  # dim 4
         ]
 
-        # self.props = torch.cat((
+        # obs_now = torch.cat([
+        #     self.base_lin_vel_pred * self.obs_scales.lin_vel, # 3
         #     self.base_ang_vel * self.obs_scales.ang_vel, # 3
         #     self.projected_gravity, # 3
+        #     self.nav_commands, # 15/21/9 (Ground Truth Vision)
+        #     self.task_flags, # 1
         #     self.orig_nav_actions, # 4
-        #     self.task_flags,  # dim 1
-        #     self.reindex((self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos), # dim 12
-        #     self.reindex(self.dof_vel * self.obs_scales.dof_vel), # dim 12
-        #     self.last_dof_actions,
-        #     delay_nav_commands),dim=-1) # dim 12
-
-        # obs_buf = self.props.clone()
-        # obs_buf[:, 6:6+4] = self.orig_nav_actions # replace nav actions
-        # obs_buf[:, 10:10+1] = self.task_flags # replace pitch with task flag
-        # obs_buf = torch.cat([obs_buf, self.delay_nav_commands], dim=-1) # 47 + 15 or 21 = 62 or 68
+        #     ], dim=-1)
 
     def parse_config(self):
         super().parse_config()
@@ -128,23 +118,25 @@ class HomiNavAgent(BaseRLAgent):
         self.nav_timestamp += 1  # each step is 0.02s
 
         # Logging
-        # if self.nav_timestamp % 5 == 0:
-        #     # Use dictionary for structured logging
-        #     log_step = {
-        #         "euler_rpy": np.array(self.robot.euler_rpy).flatten(), # 3
-        #         "base_ang_vel": np.array(self.robot.base_ang_vel).flatten(), # 3
-        #         "projected_gravity": np.array(self.robot.projected_gravity).flatten(), # 3
-        #         "nav_commands": self.commands.flatten(), # 3 * 3
-        #         "task_flag": self.task_flag.flatten(), # 1
-        #         "actions": self.orig_actions.flatten() # 4
-        #     }
-        #     self.log_data.append(log_step)
+        if self.robot.sim_run:
+            if self.nav_timestamp % 5 == 0:
+                # Use dictionary for structured logging
+                log_step = {
+                    "base_lin_vel": np.array(self.loco_agent.base_lin_vel_pred).flatten(),  # 3
+                    "base_ang_vel": np.array(self.robot.base_ang_vel).flatten(),  # 3
+                    "euler_rpy": np.array(self.robot.euler_rpy).flatten(),  # 3
+                    "projected_gravity": np.array(self.robot.projected_gravity).flatten(),  # 3
+                    "nav_commands": self.commands.flatten(),  # 3 * 3
+                    "task_flag": self.task_flag.flatten(),  # 1
+                    "actions": self.orig_actions.flatten(),  # 4
+                }
+                self.log_data.append(log_step)
 
-        # if self.nav_timestamp == 300:
-        #     # Convert list of dicts to dict of arrays for np.savez
-        #     save_dict = {k: np.array([step[k] for step in self.log_data]) for k in self.log_data[0].keys()}
-        #     np.savez(self.log_path, **save_dict)
-        #     self.logger.important(f"[Nav] Saved navigation log to {self.log_path}")
+            if self.nav_timestamp == 300:
+                # Convert list of dicts to dict of arrays for np.savez
+                save_dict = {k: np.array([step[k] for step in self.log_data]) for k in self.log_data[0].keys()}
+                np.savez(self.log_path, **save_dict)
+                self.logger.important(f"[Nav] Saved navigation log to {self.log_path}")
 
         return action, None, None, self.done
 
