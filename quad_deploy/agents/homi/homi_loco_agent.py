@@ -21,15 +21,16 @@ class HomiLocoAgent(BaseRLAgent):
     def prepare_obs_terms(self):
         """Define observation components and their corresponding scale factors."""
         # total dimension: 47
-        self.observation_components = [
+        # Use tuple instead of list to avoid allocation overhead
+        self.observation_components = (
             (self.robot.base_ang_vel, self.obs_scale.ang_vel),  # dim 3
             (self.robot.projected_gravity, 1.0),  # dim 3
+            (self.robot.euler_rpy[1], 1.0),  # dim 1
             (self.commands, self.commands_scale),  # dim 4
-            (self.robot.euler_rpy[1:2], 1.0),  # dim 1
             (self.robot.dof_pos_rel, self.obs_scale.dof_pos),  # dim 12
             (self.robot.dof_vel, self.obs_scale.dof_vel),  # dim 12
             (self.robot.last_action, 1.0),  # dim 12
-        ]
+        )
 
     def parse_config(self):
         super().parse_config()

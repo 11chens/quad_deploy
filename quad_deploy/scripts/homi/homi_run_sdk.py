@@ -191,7 +191,6 @@ def main(args=None):
         "vlm": VLM2BobotBridge,
         "gripper": GripperNode,
         "joystick": JoystickNode,
-        # "camera": CameraNode, # recommended to run camera node in separate process, rather than in the daemon ros thread
     }
     agents_dict = {
         "stand": StandAgent,

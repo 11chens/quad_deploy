@@ -50,8 +50,8 @@ def compare_nav_logs(sim_path, real_path):
         "euler_rpy": ["Roll", "Pitch", "Yaw"],
         "projected_gravity": ["Gravity X", "Gravity Y", "Gravity Z"],
         "nav_commands": ["Sigma X", "Sigma Y", "Sigma Z"],
-        "actions": ["Action Vx", "Action Vy", "Action Vyaw", "Action Pitch"],
         "task_flag": ["Task Flag"],
+        "actions": ["Action Vx", "Action Vy", "Action Vyaw", "Action Pitch"],
     }
 
     plot_tasks = []

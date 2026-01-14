@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 import onnxruntime as ort
+from ros_base.utils.decorators import profile_latency
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
@@ -21,30 +22,27 @@ class HomiNavAgent(BaseRLAgent):
         self.loco_agent.post_clip = self.cfg.post_clip
         self.loco_agent.smooth_factor = self.cfg.smooth_factor
         self.orig_actions = np.zeros(self.cfg.num_actions, dtype=np.float32)
+        self._cached_commands = None
 
         self.log_data = []
         self.log_path = os.path.join(os.path.expanduser("~"), "homi_nav_log.npz")
 
+        # Pre-allocate clip bounds to avoid creating lists every step
+        self._clip_lower = np.array([-3.0] * self.cfg.num_actions, dtype=np.float32)
+        self._clip_upper = np.array([3.0] * self.cfg.num_actions, dtype=np.float32)
+
     def prepare_obs_terms(self):
         """Define observation components and their corresponding scale factors."""
         # total dimension:  3 + 3 + 3 + 9 + 1 + 4 = 23
-        self.observation_components = [
+        # Use tuple instead of list to avoid allocation overhead
+        self.observation_components = (
             (self.loco_agent.base_lin_vel_pred, self.obs_scale.lin_vel),  # dim 3
             (self.robot.base_ang_vel, self.obs_scale.ang_vel),  # dim 3
             (self.robot.projected_gravity, 1.0),  # dim 3
             (self.commands, 1.0),  # dim 9
             (self.task_flag, 1.0),  # dim 1
             (self.last_action, 1.0),  # dim 4
-        ]
-
-        # obs_now = torch.cat([
-        #     self.base_lin_vel_pred * self.obs_scales.lin_vel, # 3
-        #     self.base_ang_vel * self.obs_scales.ang_vel, # 3
-        #     self.projected_gravity, # 3
-        #     self.nav_commands, # 15/21/9 (Ground Truth Vision)
-        #     self.task_flags, # 1
-        #     self.orig_nav_actions, # 4
-        #     ], dim=-1)
+        )
 
     def parse_config(self):
         super().parse_config()
@@ -103,15 +101,22 @@ class HomiNavAgent(BaseRLAgent):
                 pitch = self.robot.euler_rpy[1]
                 self.logger.info(f"[Nav] pitch: {pitch:.3f}")
 
+    @profile_latency(
+        cycle_threshold_ms=100.0,
+        process_threshold_ms=50.0,
+        log_interval_s=3.0,
+        debug=True,
+        check_capture_latency=False,
+    )
     def step(self):
+        self._cached_commands = None
         self.get_observation()
         action = self.infer()
         if self.state == "gripper_start":
             action[:3] = 0.0  # stop moving when gripper is working, only keep the pitch command
 
-        self.orig_actions = np.clip(
-            action, [-3.0] * self.num_actions, [3.0] * self.num_actions
-        )  # in case the model outputs large values
+        # Use pre-allocated bounds instead of creating lists every time
+        np.clip(action, self._clip_lower, self._clip_upper, out=self.orig_actions)
         self.loco_agent.pre_cmds = np.clip(self.orig_actions, self.cfg.min_action, self.cfg.max_action)
 
         action, _, _, _ = self.loco_agent.step()
@@ -151,11 +156,13 @@ class HomiNavAgent(BaseRLAgent):
 
     @property
     def commands(self):
-        # reshape: from self.vlm.sigma_3d_cam: :List of [x, y, z] to np.array of shape (L, 3) to (3L,)
-        return np.array(
-            self.vlm.sigma_3d_cam[0 : self.num_commands // 3],
-            dtype=np.float32,
-        ).reshape(-1)
+        if self._cached_commands is None:
+            # reshape: from self.vlm.sigma_3d_cam: :List of [x, y, z] to np.array of shape (L, 3) to (3L,)
+            self._cached_commands = np.array(
+                self.vlm.sigma_3d_cam[0 : self.num_commands // 3],
+                dtype=np.float32,
+            ).reshape(-1)
+        return self._cached_commands
 
     @property
     def task_flag(self):
@@ -163,10 +170,13 @@ class HomiNavAgent(BaseRLAgent):
             grasp_flag = 0.0
         else:
             grasp_flag = float(not self.vlm.grasp)
-        return np.array(
-            [grasp_flag],  # Pick: 0, Place: 1
-            dtype=np.float32,
-        )
+
+        # Avoid creating new numpy array every time
+        if not hasattr(self, "_task_flag_buf"):
+            self._task_flag_buf = np.zeros(1, dtype=np.float32)
+
+        self._task_flag_buf[0] = grasp_flag
+        return self._task_flag_buf
 
     @property
     def last_action(self):
