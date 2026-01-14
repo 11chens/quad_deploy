@@ -37,7 +37,7 @@ class HomiRunSDKV2(BaseManager):
 
         # 2. Setup Handshake Rules (Co-design: using the new rules API)
         wait_robot = kwargs.get("wait_robot", True)
-        wait_vlm = kwargs.get("wait_vlm", True)
+        wait_vlm = kwargs.get("wait_vlm", False)
 
         if wait_robot:
             self.add_handshake_rule("Robot Connection", lambda: hasattr(self.nodes.get("robot"), "low_state"))
@@ -108,7 +108,6 @@ def main(args):
         start_state="cold_start",
         logdir=logdir,  # Fixed: Path for ONNX models
         custom_logger=CustomLogger,
-        main_loop_timer=True,
         # Custom parameters passed to Handler/Nodes
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
@@ -124,7 +123,7 @@ def main(args):
 if __name__ == "__main__":
     custom_params = [
         {"name": "--wait_robot", "type": bool, "default": True, "help": "Wait for robot hardware."},
-        {"name": "--wait_vlm", "type": bool, "default": True, "help": "Wait for VLM software."},
+        {"name": "--wait_vlm", "type": bool, "default": False, "help": "Wait for VLM software."},
         {"name": "--gripper", "type": str, "default": "None", "help": "Gripper type."},
         {"name": "--cam_type", "type": str, "default": "None", "help": "Camera type."},
     ]

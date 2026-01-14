@@ -67,10 +67,10 @@ class HomiRunSDK(BaseManager):
             self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
             return "human_teleop"
 
-        # if self.joystick.A:
-        #     grasp = not self.gripper.grasp_state  # Toggle grasp state
-        #     self.gripper.handle(grasp=grasp)
-        #     return None
+        if self.joystick.B:
+            grasp = not self.gripper.grasp_state  # Toggle grasp state
+            self.gripper.handle(grasp=grasp)
+            return None
 
         # ================ Switch RL agent ================ #
         if (self.state == "cold_start" or self.state == "recovery") and self.agents["stand"].done:
