@@ -20,8 +20,9 @@ class GripperNode(BaseNode):
         self._support_gripper_types = ["two_fingers", "three_fingers"]
         self.gripper_type = gripper_type
         self.parse_config()
-        self.duration = 0.2  # duration to finish grasp or release action, in seconds
+        self.duration = 3.0  # duration to finish grasp or release action, in seconds
         self.start_time = None
+        self.grasp_state = None
 
         self.serial_port = serial.Serial(
             port=self.port,

@@ -3,9 +3,8 @@ from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 
 class HomiNavAgentCfg(BaseAgentCfg):
     # (u, v, depth)
-    # num_commands = 3 * 7  # 7 points
-    num_commands = 3 * 3  # 3 points
-    # num_commands = 3 # 1 point
+    num_commands = 3 * 7  # 7 points
+    # num_commands = 3 * 3  # 3 points
     # (vx, vy, vyaw, pitch)
     num_actions = 4
     post_clip = False

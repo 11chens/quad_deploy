@@ -9,6 +9,7 @@ from ros_base.utils.decorators import profile_latency
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
 from quad_deploy.config.homi.homi_nav_agent_cfg import HomiNavAgentCfg
+from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 
 
@@ -17,6 +18,7 @@ class HomiNavAgent(BaseRLAgent):
         super().__init__(cfg=cfg, *args, **kwargs)
 
         self.vlm: VLM2BobotBridge = self.nodes.get("vlm")
+        self.gripper: GripperNode = self.nodes.get("gripper")
         self.loco_agent: HomiLocoAgent = self.agents.get("loco")
         self.cfg: HomiNavAgentCfg
         self.loco_agent.post_clip = self.cfg.post_clip
@@ -166,10 +168,8 @@ class HomiNavAgent(BaseRLAgent):
 
     @property
     def task_flag(self):
-        if self.vlm.grasp is None:
-            grasp_flag = 0.0
-        else:
-            grasp_flag = float(not self.vlm.grasp)
+        # 1.0: place (closed), 0.0: pick (open)
+        grasp_flag = float(self.gripper.grasp_state)
 
         # Avoid creating new numpy array every time
         if not hasattr(self, "_task_flag_buf"):
