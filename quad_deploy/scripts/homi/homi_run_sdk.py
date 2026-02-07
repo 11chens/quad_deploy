@@ -13,7 +13,8 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
 from quad_deploy.agents.homi.homi_nav_agent import HomiNavAgent
-from quad_deploy.agents.homi.homi_nav_gru_agent import HomiNavGruAgent as HomiNavAgent
+
+# from quad_deploy.agents.homi.homi_nav_gru_agent import HomiNavGruAgent as HomiNavAgent
 from quad_deploy.agents.homi.homi_turn_agent import HomiTurnAgent
 from quad_deploy.agents.stand_agent import StandAgent
 from quad_deploy.nodes.homi.gripper_node import GripperNode

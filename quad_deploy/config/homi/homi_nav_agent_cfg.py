@@ -11,6 +11,8 @@ class HomiNavAgentCfg(BaseAgentCfg):
     num_props = num_actions + num_commands + 1 + 9  # lin_vel(3), ang_vel(3), gravity(3)
     num_nav_commands = num_commands
     len_history = 5
+    nav_len_history = 5
+    nav_update_interval = 10
     pixel_gain = 10
     cx_norm = 0.5
     cy_norm = 0.5

@@ -5,6 +5,7 @@ import time
 import numpy as np
 import onnxruntime as ort
 from ros_base.utils.decorators import profile_latency
+from ros_base.utils.math_utils import CircularBuffer
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
@@ -32,6 +33,9 @@ class HomiNavAgent(BaseRLAgent):
         # Pre-allocate clip bounds to avoid creating lists every step
         self._clip_lower = np.array([-3.0] * self.cfg.num_actions, dtype=np.float32)
         self._clip_upper = np.array([3.0] * self.cfg.num_actions, dtype=np.float32)
+
+        # TCN Settings
+        self.tcn_buffer = CircularBuffer(self.cfg.nav_len_history)
 
     def prepare_obs_terms(self):
         """Define observation components and their corresponding scale factors."""
@@ -63,7 +67,12 @@ class HomiNavAgent(BaseRLAgent):
         # Expected outputs: ['action']
 
     def infer(self):
-        _actor_input = self.obs_hist.buffer.reshape(1, -1)
+        mlp_input = self.obs_hist.buffer.reshape(1, -1)
+        tcn_input = self.tcn_buffer.buffer.reshape(1, -1)
+
+        # Combined Input: [TCN_Flattened, MLP_Flattened]
+        # Match ActorCriticTCN: extract_obs expects TCN part first, MLP part last
+        _actor_input = np.concatenate([tcn_input, mlp_input], axis=1)
 
         # Run inference
         # Inputs: {input_name: obs}
@@ -102,6 +111,24 @@ class HomiNavAgent(BaseRLAgent):
             elif info == "pitch":
                 pitch = self.robot.euler_rpy[1]
                 self.logger.info(f"[Nav] pitch: {pitch:.3f}")
+
+    def get_observation(self):
+        """Build the 1D observation array by concatenating scaled components.
+
+        Returns:
+            np.ndarray: The observation buffer with scaled values.
+        """
+        self.prepare_obs_terms()
+        start = 0
+        for component, scale in self.observation_components:
+            end = start + component.shape[0]
+            self.obs_buf[start:end] = component * scale
+            start = end
+        self.obs_hist.append(self.obs_buf)
+
+        # Update TCN Buffer (every 10 steps / 200ms)
+        if self.nav_timestamp % self.cfg.nav_update_interval == 0:
+            self.tcn_buffer.append(self.commands)
 
     @profile_latency(
         cycle_threshold_ms=100.0,
@@ -151,6 +178,9 @@ class HomiNavAgent(BaseRLAgent):
         # wireless = False: override the joystick commands
         self.loco_agent.wireless = not self.robot.auto
         self.nav_timestamp = 0
+        # Reset Signal Processing and Buffers
+        self.tcn_buffer.reset()
+        self.obs_hist.reset()
 
     @property
     def done(self):
