@@ -34,6 +34,9 @@ class HomiNavAgent(BaseRLAgent):
         self._clip_lower = np.array([-3.0] * self.cfg.num_actions, dtype=np.float32)
         self._clip_upper = np.array([3.0] * self.cfg.num_actions, dtype=np.float32)
 
+        # EMA Filter State
+        self.filtered_commands = np.zeros(self.cfg.num_commands, dtype=np.float32)
+
         # TCN Settings
         self.tcn_buffer = CircularBuffer(self.cfg.nav_len_history)
 
@@ -178,6 +181,14 @@ class HomiNavAgent(BaseRLAgent):
         # wireless = False: override the joystick commands
         self.loco_agent.wireless = not self.robot.auto
         self.nav_timestamp = 0
+
+        # Initialize filter with current raw observation to avoid transient
+        raw_cmds = np.array(
+            self.vlm.sigma_3d_cam[0 : self.num_commands // 3],
+            dtype=np.float32,
+        ).reshape(-1)
+        self.filtered_commands = raw_cmds
+
         # Reset Signal Processing and Buffers
         self.tcn_buffer.reset()
         self.obs_hist.reset()
@@ -189,11 +200,26 @@ class HomiNavAgent(BaseRLAgent):
     @property
     def commands(self):
         if self._cached_commands is None:
-            # reshape: from self.vlm.sigma_3d_cam: :List of [x, y, z] to np.array of shape (L, 3) to (3L,)
-            self._cached_commands = np.array(
+            # 1. Get Raw Commands
+            raw_cmds = np.array(
                 self.vlm.sigma_3d_cam[0 : self.num_commands // 3],
                 dtype=np.float32,
             ).reshape(-1)
+
+            # 2. Apply Optional EMA Filter
+            if self.cfg.enable_ema_filter:
+                # Check if task is Place (task_flag > 0.5)
+                # Alpha strategy matches Sim:
+                # - If Place Task: Use cfg.ema_alpha (e.g. 0.3) for smoothing
+                # - If Pick/Other: Use 1.0 (Passthrough / No Filter)
+                is_place = self.task_flag[0] > 0.5
+                alpha = self.cfg.ema_alpha if is_place else 1.0
+
+                self.filtered_commands = (1.0 - alpha) * self.filtered_commands + alpha * raw_cmds
+                self._cached_commands = self.filtered_commands.copy()
+            else:
+                self._cached_commands = raw_cmds
+
         return self._cached_commands
 
     @property
