@@ -5,7 +5,6 @@ import time
 import numpy as np
 import onnxruntime as ort
 from ros_base.utils.decorators import profile_latency
-from ros_base.utils.math_utils import CircularBuffer
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
 from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
@@ -14,7 +13,7 @@ from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 
 
-class HomiNavAgent(BaseRLAgent):
+class HomiNavGruAgent(BaseRLAgent):
     def __init__(self, cfg=HomiNavAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
@@ -28,17 +27,14 @@ class HomiNavAgent(BaseRLAgent):
         self._cached_commands = None
 
         self.log_data = []
-        self.log_path = os.path.join(os.path.expanduser("~"), "homi_nav_log.npz")
+        self.log_path = os.path.join(os.path.expanduser("~"), "homi_nav_gru_log.npz")
 
         # Pre-allocate clip bounds to avoid creating lists every step
         self._clip_lower = np.array([-3.0] * self.cfg.num_actions, dtype=np.float32)
         self._clip_upper = np.array([3.0] * self.cfg.num_actions, dtype=np.float32)
 
-        # EMA Filter State
-        self.filtered_commands = np.zeros(self.cfg.num_commands, dtype=np.float32)
-
-        # TCN Settings
-        self.tcn_buffer = CircularBuffer(self.cfg.nav_len_history)
+        # RNN Hidden State
+        self.hidden_state = None
 
     def prepare_obs_terms(self):
         """Define observation components and their corresponding scale factors."""
@@ -66,27 +62,44 @@ class HomiNavAgent(BaseRLAgent):
         self.input_names = [inp.name for inp in self.policy.get_inputs()]
         self.output_names = [out.name for out in self.policy.get_outputs()]
 
-        # Expected inputs: ['obs']
-        # Expected outputs: ['action']
+        # Initialize hidden state
+        self.reset_hidden_state()
+        self.logger.important(f"[NavGru] Loaded GRU model from {onnx_path}")
+
+    def reset_hidden_state(self):
+        # Find h_in shape from onnx metadata
+        # Expected input names: ['obs', 'h_in']
+        for inp in self.policy.get_inputs():
+            if inp.name == "h_in":
+                # shape is usually [num_layers, batch_size, hidden_size]
+                dims = inp.shape
+                # Replace dynamic dimensions (strings) with 1
+                dims = [d if isinstance(d, int) else 1 for d in dims]
+                self.hidden_state = np.zeros(dims, dtype=np.float32)
+                return
+
+        # Fallback if h_in not found (should not happen for GRU agent)
+        self.logger.warning("[NavGru] 'h_in' not found in model inputs! Is this a GRU model?")
+        self.hidden_state = None
 
     def infer(self):
-        mlp_input = self.obs_hist.buffer.reshape(1, -1)
-        tcn_input = self.tcn_buffer.buffer.reshape(1, -1)
+        # Inputs: {obs: [1, flattened_len], h_in: [layers, 1, hidden]}
+        _actor_input = self.obs_hist.buffer.reshape(1, -1).astype(np.float32)
 
-        # Combined Input: [TCN_Flattened, MLP_Flattened]
-        # Match ActorCriticTCN: extract_obs expects TCN part first, MLP part last
-        _actor_input = np.concatenate([tcn_input, mlp_input], axis=1)
-
-        # Run inference
-        # Inputs: {input_name: obs}
         inputs = {
             self.input_names[0]: _actor_input,
         }
 
+        if self.hidden_state is not None:
+            inputs["h_in"] = self.hidden_state
+
         outputs = self.policy.run(self.output_names, inputs)
 
-        # Outputs: [action]
+        # Outputs: [action, h_out]
         action = outputs[0][0]
+
+        if len(outputs) > 1:
+            self.hidden_state = outputs[1]
 
         return action
 
@@ -114,27 +127,6 @@ class HomiNavAgent(BaseRLAgent):
             elif info == "pitch":
                 pitch = self.robot.euler_rpy[1]
                 self.logger.info(f"[Nav] pitch: {pitch:.3f}")
-            elif info == "task_flag":
-                task_flag = self.task_flag
-                self.logger.info(f"[Nav] task_flag (grasp_state): {task_flag[0]:.1f}")
-
-    def get_observation(self):
-        """Build the 1D observation array by concatenating scaled components.
-
-        Returns:
-            np.ndarray: The observation buffer with scaled values.
-        """
-        self.prepare_obs_terms()
-        start = 0
-        for component, scale in self.observation_components:
-            end = start + component.shape[0]
-            self.obs_buf[start:end] = component * scale
-            start = end
-        self.obs_hist.append(self.obs_buf)
-
-        # Update TCN Buffer (every 10 steps / 200ms)
-        if self.nav_timestamp % self.cfg.nav_update_interval == 0:
-            self.tcn_buffer.append(self.commands)
 
     @profile_latency(
         cycle_threshold_ms=100.0,
@@ -184,18 +176,9 @@ class HomiNavAgent(BaseRLAgent):
         # wireless = False: override the joystick commands
         self.loco_agent.wireless = not self.robot.auto
         self.nav_timestamp = 0
-
-        # Initialize filter with current raw observation to avoid transient
-        raw_cmds = np.array(
-            self.vlm.sigma_3d_cam[0 : self.num_commands // 3],
-            dtype=np.float32,
-        ).reshape(-1)
-        self.filtered_commands = raw_cmds
-
-        # Reset Signal Processing and Buffers
-        self.tcn_buffer.reset()
-        self.obs_hist.reset()
         self.task_flag = np.array([self.gripper.grasp_state], dtype=np.float32)
+        if hasattr(self, "policy"):
+            self.reset_hidden_state()
 
     @property
     def done(self):
@@ -204,42 +187,12 @@ class HomiNavAgent(BaseRLAgent):
     @property
     def commands(self):
         if self._cached_commands is None:
-            # 1. Get Raw Commands
-            raw_cmds = np.array(
+            # reshape: from self.vlm.sigma_3d_cam: :List of [x, y, z] to np.array of shape (L, 3) to (3L,)
+            self._cached_commands = np.array(
                 self.vlm.sigma_3d_cam[0 : self.num_commands // 3],
                 dtype=np.float32,
             ).reshape(-1)
-
-            # 2. Apply Optional EMA Filter
-            if self.cfg.enable_ema_filter:
-                # Check if task is Place (task_flag > 0.5)
-                # Alpha strategy matches Sim:
-                # - If Place Task: Use cfg.ema_alpha (e.g. 0.3) for smoothing
-                # - If Pick/Other: Use 1.0 (Passthrough / No Filter)
-                is_place = self.task_flag[0] > 0.5
-                alpha = self.cfg.ema_alpha if is_place else 1.0
-
-                self.filtered_commands = (1.0 - alpha) * self.filtered_commands + alpha * raw_cmds
-                self._cached_commands = self.filtered_commands.copy()
-            else:
-                self._cached_commands = raw_cmds
-
         return self._cached_commands
-
-    # @property
-    # def task_flag(self):
-    #     if self.state == "gripper_start":
-    #         return self._task_flag_buf # keep previous value during gripper action
-
-    #     # 1.0: place (closed), 0.0: pick (open)
-    #     grasp_flag = float(self.gripper.grasp_state)
-
-    #     # Avoid creating new numpy array every time
-    #     if not hasattr(self, "_task_flag_buf"):
-    #         self._task_flag_buf = np.zeros(1, dtype=np.float32)
-
-    #     self._task_flag_buf[0] = grasp_flag
-    #     return self._task_flag_buf
 
     @property
     def last_action(self):

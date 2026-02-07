@@ -105,7 +105,8 @@ class BaseRLAgent(BaseAgent):
         start = 0
         for component, scale in self.observation_components:
             end = start + component.shape[0]
-            self.obs_buf[start:end] = component * scale
+            # self.obs_buf[start:end] = component * scale
+            np.multiply(component, scale, out=self.obs_buf[start:end])
             start = end
         self.obs_hist.append(self.obs_buf)
         return self.obs_buf
