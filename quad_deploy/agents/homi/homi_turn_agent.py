@@ -22,7 +22,7 @@ class HomiTurnAgent(BaseRLAgent):
         self.max_yaw_vel = 1.0
         self.min_yaw_vel = 0.5
 
-        self.k_p = 0.5
+        self.k_p = 0.75
         self.target_yaw_diff = 0.0
         self.start_turn_time = None
         self.duration = 3.0
