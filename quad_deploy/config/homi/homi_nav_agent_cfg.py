@@ -11,11 +11,11 @@ class HomiNavAgentCfg(BaseAgentCfg):
     num_props = num_actions + num_commands + 1 + 9  # lin_vel(3), ang_vel(3), gravity(3)
     num_nav_commands = num_commands
     len_history = 5
-    nav_len_history = 5
+    nav_len_history = 10
     nav_update_interval = 10
 
     # EMA Filter Settings
-    enable_ema_filter = True  # Enable EMA filter for commands
+    enable_ema_filter = False  # Enable EMA filter for commands
     ema_alpha = 0.3  # EMA alpha factor (0.0: infinite history, 1.0: no history)
 
     pixel_gain = 10
