@@ -87,10 +87,31 @@ class HomiRunSDK(BaseManager):
 
         if self.state == "turn" and self.wait_vlm:
             if not self.robot.sim_run:
-                self.logger.log_once("Waiting for VLM message: <sigma_3d_cam> and <object_ready>.")
-                if self.vlm.sigma_3d_cam is not None and self.vlm.object_ready:
-                    self.logger.info("VLM message <sigma_3d_cam> and <object_ready> received, starting navigation!")
+                has_sigma = self.vlm.sigma_3d_cam is not None
+                has_object = self.vlm.object_ready
+
+                if has_sigma and has_object:
+                    self.logger.info("VLM messages <sigma_3d_cam> and <object_ready> received, starting navigation!")
                     return "navigation"
+                else:
+                    wait_msgs = []
+                    if not has_sigma:
+                        wait_msgs.append("<sigma_3d_cam>")
+                    if not has_object:
+                        wait_msgs.append("<object_ready>")
+
+                    ready_msgs = []
+                    if has_sigma:
+                        ready_msgs.append("<sigma_3d_cam>")
+                    if has_object:
+                        ready_msgs.append("<object_ready>")
+
+                    log_msg = f"Waiting for VLM: {', '.join(wait_msgs)}."
+                    if ready_msgs:
+                        log_msg += f" (Received: {', '.join(ready_msgs)})"
+
+                    self.logger.log_once(log_msg)
+                    return None
             else:
                 self.logger.log_once("Waiting for VLM message: <sigma_3d_cam>.")
                 if self.vlm.sigma_3d_cam is not None:
