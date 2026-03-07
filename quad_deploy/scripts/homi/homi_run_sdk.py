@@ -263,7 +263,7 @@ if __name__ == "__main__":
             "name": "--gripper",
             "type": str,
             "default": "None",
-            "help": "Deciding what type of gripper to use (two_fingers, three_fingers, None).",
+            "help": "Deciding what type of gripper to use (two_fingers, None).",
         },
         {"name": "--cam_type", "type": str, "default": "None", "help": "Camera type to use (zed, go2, None)."},
     ]

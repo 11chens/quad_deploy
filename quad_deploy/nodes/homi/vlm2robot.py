@@ -67,33 +67,33 @@ class VLM2BobotBridge(BaseNode):
     def _vlm_done_callback(self, msg: Bool):
         vlm_done = msg.data
         self.vlm_done = vlm_done
-        self.logger.info(f"""[Sub] vlm_done: {vlm_done}.""")
+        self.logger.log_once(f"""[Sub] vlm_done: {vlm_done}.""")
 
     def _object_ready_callback(self, msg: Bool):
         object_ready = msg.data
         self.object_ready = object_ready
-        self.logger.info(f"""[Sub] object_ready: {object_ready}.""")
+        self.logger.log_once(f"""[Sub] object_ready: {object_ready}.""")
 
     def publish_rl_ready(self, rl_ready: bool):
         if not self.rl_ready and rl_ready:  # False -> True
             self.rl_ready = rl_ready
             self.rl_ready_msg.data = rl_ready
             self.rl_ready_pub.publish(self.rl_ready_msg)
-            self.logger.info(f"""[Pub] rl_ready: {rl_ready}.""")
+            self.logger.log_once(f"""[Pub] rl_ready: {rl_ready}.""")
 
     def publish_turn_done(self, turn_done: bool):
         if not self.turn_done and turn_done:  # False -> True
             self.turn_done = turn_done
             self.turn_done_msg.data = turn_done
             self.turn_done_pub.publish(self.turn_done_msg)
-            self.logger.info(f"""[Pub] turn_done: {turn_done}.""")
+            self.logger.log_once(f"""[Pub] turn_done: {turn_done}.""")
 
     def publish_grasp_done(self, grasp_done: bool):
         if not self.grasp_done and grasp_done:  # False -> True
             self.grasp_done = grasp_done
             self.grasp_done_msg.data = grasp_done
             self.grasp_done_pub.publish(self.grasp_done_msg)
-            self.logger.info(f"""[Pub] grasp_done: {grasp_done}.""")
+            self.logger.log_once(f"""[Pub] grasp_done: {grasp_done}.""")
 
     def publish_robot_euler_rpy(self, euler_rpy):
         self.euler_msg.header.stamp = self.get_clock().now().to_msg()

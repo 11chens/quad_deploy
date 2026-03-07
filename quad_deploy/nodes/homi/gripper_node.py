@@ -12,12 +12,12 @@ from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 class GripperNode(BaseNode):
     def __init__(self, gripper_type="two_fingers", *args, **kwargs):
         """Node to control the gripper via serial communication.
-        Supported gripper types: "two_fingers", "three_fingers", or "None" (sim serial port).
+        Supported gripper types: "two_fingers", or "None" (sim serial port).
         """
         super().__init__(*args, **kwargs)
 
         # Configure serial port
-        self._support_gripper_types = ["two_fingers", "three_fingers"]
+        self._support_gripper_types = ["two_fingers"]
         self.gripper_type = gripper_type
         self.parse_config()
         self.duration = 3.0  # duration to finish grasp or release action, in seconds
@@ -35,16 +35,22 @@ class GripperNode(BaseNode):
     def parse_config(self):
         """Parse configuration for different gripper types."""
         if self.gripper_type == "two_fingers":
-            self.grasp_data = bytes([0x24, 0x41, 0x30, 0x39, 0x38, 0x23])  # grasp command
-            self.release_data = bytes([0x24, 0x41, 0x30, 0x35, 0x30, 0x23])  # release command
-            self.port = "/dev/ttyUSB0"
+            # Gripper Control Table (Two Fingers type)
+            # Protocol: $A<Angle># where Angle is 3 digits (000-108)
+            # Physical Limits: 000 (Max Open) to 108 (Max Close)
+            #
+            # | Action          | Angle | Command String | Python Bytes Code                            |
+            # |-----------------|-------|----------------|----------------------------------------------|
+            # | Max Open        | 000   | $A000#         | bytes([0x24, 0x41, 0x30, 0x30, 0x30, 0x23])  |
+            # | Partial Open 30 | 030   | $A030#         | bytes([0x24, 0x41, 0x30, 0x33, 0x30, 0x23])  |
+            # | Partial Open 50 | 050   | $A050#         | bytes([0x24, 0x41, 0x30, 0x35, 0x30, 0x23])  |
+            # | Middle          | 090   | $A090#         | bytes([0x24, 0x41, 0x30, 0x39, 0x30, 0x23])  |
+            # | Default Grasp   | 098   | $A098#         | bytes([0x24, 0x41, 0x30, 0x39, 0x38, 0x23])  |
+            # | Max Close       | 108   | $A108#         | bytes([0x24, 0x41, 0x31, 0x30, 0x38, 0x23])  |
 
-        elif self.gripper_type == "three_fingers":
-            self.grasp_data = bytes([0x7B, 0x01, 0x02, 0x01, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF8, 0x7D])  # grasp command
-            self.release_data = bytes(
-                [0x7B, 0x01, 0x02, 0x00, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF9, 0x7D]
-            )  # release command
-            self.port = "/dev/ttyACM0"
+            self.grasp_data = bytes([0x24, 0x41, 0x30, 0x39, 0x38, 0x23])  # grasp command
+            self.release_data = bytes([0x24, 0x41, 0x30, 0x33, 0x30, 0x23])  # release command
+            self.port = "/dev/ttyUSB0"
 
         # sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
         else:
