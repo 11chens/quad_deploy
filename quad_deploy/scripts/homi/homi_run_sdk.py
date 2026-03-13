@@ -5,8 +5,6 @@ import time
 import numpy as np
 import rclpy
 from ros_base.manager.base_manager import BaseManager, register_multiprocess_nodes
-from ros_base.nodes.camera.camera_node import CameraNode
-from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode as JoystickNode
 from ros_base.utils.args_debug import add_debug_mode
 from ros_base.utils.logger import CustomLogger
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
@@ -20,6 +18,7 @@ from quad_deploy.agents.stand_agent import StandAgent
 from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
+from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
 from quad_deploy.utils.parse_args import parse_arguments
 
 
@@ -165,9 +164,6 @@ class HomiRunSDK(BaseManager):
             grasp = not self.gripper.grasp_state  # Toggle grasp state
             self.gripper.handle(grasp=grasp)
 
-        # elif switch_to_state == "gripper_done":
-        #     self.vlm.publish_grasp_done(grasp_done=True)
-
         if not self.state == "emergency":
             self.curr_agent_r.handle()
             self.vlm.publish_robot_euler_rpy(euler_rpy=self.robot.euler_rpy)
@@ -186,7 +182,6 @@ def update_dict(
 ):
     """Update the dicts for debugging in a simulated environment."""
     if not args.nosimrun:
-        args.cam_type = "none"
         args.gripper = "none"
         cmds_dict["keyboard"] = (
             # "bash -c 'LD_LIBRARY_PATH=$HOME/miniforge3/envs/humble/lib:$LD_LIBRARY_PATH; source ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
@@ -196,9 +191,6 @@ def update_dict(
         from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
 
         nodes_dict.update({"keyboard": KeyboardNode})
-
-    if args.cam_type.lower() == "none":
-        mp_nodes_dict.pop("camera")
 
     if args.gripper.lower() == "none":
         cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11 &"
@@ -220,7 +212,7 @@ def main(args=None):
         "turn": HomiTurnAgent,
     }
 
-    mp_nodes_dict = {"camera": CameraNode}
+    mp_nodes_dict = {}
 
     logdir = "~/Data/onboard_data/onnx_models/homi"
 
@@ -249,7 +241,6 @@ def main(args=None):
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
         gripper_type=args.gripper,
-        cam_type=args.cam_type,
     )
 
     homi_robot_node.start_main_loop_timer(processes)
@@ -265,7 +256,6 @@ if __name__ == "__main__":
             "default": "None",
             "help": "Deciding what type of gripper to use (two_fingers, None).",
         },
-        {"name": "--cam_type", "type": str, "default": "None", "help": "Camera type to use (zed, go2, None)."},
     ]
 
     args = parse_arguments(custom_parameters)

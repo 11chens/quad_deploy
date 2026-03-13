@@ -9,6 +9,11 @@ class HomiLocoAgentCfg(BaseAgentCfg):
     min_cmds = [-0.5, -0.5, -1.0, -3.14 / 6 - 0.05]
     max_cmds = [1.0, 0.5, 1.0, 3.14 / 6 + 0.05]
 
+    # [lin_vel, lin_vel, ang_vel, pitch]
+    # min_cmds = [-0.5, -0.8, -1.25, -3.14 / 6 - 0.05]
+    # max_cmds = [1.5, 0.8, 1.25, 3.14 / 6 + 0.05]
+    # smooth_factor = 0.1
+
     class obs_scale(BaseAgentCfg.obs_scale):
         lin_vel = 2.0
         ang_vel = 0.25

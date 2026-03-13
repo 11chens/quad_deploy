@@ -3,11 +3,11 @@ from typing import List, Tuple
 
 import numpy as np
 from ros_base.agents.base_agent import BaseAgent
-from ros_base.nodes.wireless.wireless_sdk import JoystickSDKNode
 from ros_base.utils.math_utils import CircularBuffer
 
 from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode
+from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode
 
 
 class BaseRLAgent(BaseAgent):

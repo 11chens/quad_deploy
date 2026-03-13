@@ -43,29 +43,64 @@ class HomiHandler(BaseHandlers):
             return "emergency"
 
         if self.joystick.L1 and self.state == "emergency":
-            self.logger.info("Robot recovery requested.")
+            self.logger.info("Robot will recovery.")
             return "recovery"
 
         if self.joystick.R2:
-            self.logger.info("Human teleop mode activated.")
+            self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
             return "human_teleop"
+
+        if self.joystick.B:
+            grasp = not self.gripper.grasp_state  # Toggle grasp state
+            self.gripper.handle(grasp=grasp)
+            return None
 
         # RL Switch Logic
         current_state = self.state
 
         if (current_state in ["cold_start", "recovery"]) and self.agents["stand"].done:
-            self.logger.log_once("[stand] agent finished. Press [X] to move to teleop.")
+            self.logger.log_once("[stand] agent returns done, waiting for press [X] to switch.")
             if self.joystick.X:
                 return "human_teleop"
+            return None
 
         if current_state == "human_teleop" and self.joystick.R1:
-            self.logger.important("Autonomous control ON. Starting [turn] agent.")
+            self.logger.important(
+                "[loco] The autonomous control is [ON]. Please pay attention to the safety of the robot."
+            )
             return "turn"
 
         if current_state == "turn" and self.wait_vlm:
-            if self.vlm.sigma_3d_cam is not None and (self.vlm.object_ready or self.robot.sim_run):
-                self.logger.info("VLM targets received, starting navigation!")
-                return "navigation"
+            if not getattr(self.robot, "sim_run", False):
+                has_sigma = self.vlm.sigma_3d_cam is not None
+                has_object = self.vlm.object_ready
+
+                if has_sigma and has_object:
+                    self.logger.info("VLM messages <sigma_3d_cam> and <object_ready> received, starting navigation!")
+                    return "navigation"
+                else:
+                    wait_msgs = []
+                    if not has_sigma:
+                        wait_msgs.append("<sigma_3d_cam>")
+                    if not has_object:
+                        wait_msgs.append("<object_ready>")
+                    ready_msgs = []
+                    if has_sigma:
+                        ready_msgs.append("<sigma_3d_cam>")
+                    if has_object:
+                        ready_msgs.append("<object_ready>")
+
+                    log_msg = f"Waiting for VLM: {', '.join(wait_msgs)}."
+                    if ready_msgs:
+                        log_msg += f" (Received: {', '.join(ready_msgs)})"
+
+                    self.logger.log_once(log_msg)
+                    return None
+            else:
+                self.logger.log_once("Waiting for VLM message: <sigma_3d_cam>.")
+                if self.vlm.sigma_3d_cam is not None:
+                    self.logger.info("VLM message <sigma_3d_cam> received, starting navigation!")
+                    return "navigation"
 
         if current_state == "navigation" and self.joystick.A:
             return "gripper_start"

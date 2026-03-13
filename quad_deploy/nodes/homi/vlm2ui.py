@@ -3,9 +3,9 @@ import time
 import cv2
 import numpy as np
 from geometry_msgs.msg import PointStamped
+from ros_base.configs.camera import get_realsense_d435i
 from ros_base.nodes.base_node import BaseNode
 from ros_base.utils.math_utils import CircularBuffer
-from ros_base.utils.realsense_config import RealsenseConfig
 from sensor_msgs.msg import Image
 
 
@@ -35,7 +35,8 @@ class VLM2UIBridge(BaseNode):
         self.P_img_filtered = None  # (u, v, depth)
 
         # Visualization state
-        self.vis_width, self.vis_height = RealsenseConfig.img_width, RealsenseConfig.img_height
+        cfg = get_realsense_d435i(align_depth=True, compressed=False)
+        self.vis_width, self.vis_height = cfg.intrinsics.width, cfg.intrinsics.height
         self.vis_canvas = np.zeros((self.vis_height, self.vis_width, 3), dtype=np.uint8)
         if not self.show_raw_image:
             self.create_timer(0.05, self._show_p_img_window)  # 20 Hz visualization
