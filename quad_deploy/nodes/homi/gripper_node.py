@@ -10,7 +10,7 @@ from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 
 
 class GripperNode(BaseNode):
-    def __init__(self, gripper_type="two_fingers", *args, **kwargs):
+    def __init__(self, gripper_type="two_fingers", port="/dev/ttyUSB0", *args, **kwargs):
         """Node to control the gripper via serial communication.
         Supported gripper types: "two_fingers", or "None" (sim serial port).
         """
@@ -23,6 +23,7 @@ class GripperNode(BaseNode):
         self.duration = 3.0  # duration to finish grasp or release action, in seconds
         self.start_time = None
         self.grasp_state = None
+        self.port = port
 
         self.serial_port = serial.Serial(
             port=self.port,
@@ -32,25 +33,46 @@ class GripperNode(BaseNode):
 
         self.handle(grasp=False)  # initialize to released state
 
+        # Initialize servo 4 to 170 degrees
+        self.servo4_state = 170
+        try:
+            self.servo_rotate(channel=4, angle=170)
+            self.logger.info("Servo channel 4 initialized to 170 degrees.")
+        except Exception as e:
+            self.logger.error(f"Failed to initialize servo 4: {e}")
+
+    def servo_rotate(self, channel, angle):
+        if not (1 <= channel <= 24):
+            self.logger.error("Servo channel must be between 1 and 24.")
+            return
+        if not (0 <= angle <= 180):
+            self.logger.error("Servo angle must be between 0 and 180.")
+            return
+        servo_id = chr(ord("A") + channel - 1)
+        angle_str = f"{angle:03d}"
+        datasend = [0x24, ord(servo_id), ord(angle_str[0]), ord(angle_str[1]), ord(angle_str[2]), 0x23]
+        try:
+            if self.serial_port.is_open:
+                self.serial_port.write(bytes(datasend))
+                self.logger.info(f"Servo {channel} rotated to {angle} degrees.")
+        except Exception as e:
+            self.logger.error(f"Failed to rotate servo {channel}: {e}")
+
+    def toggle_servo4(self):
+        """Toggle servo 4 between 80 and 170 degrees."""
+        target_angle = 80 if self.servo4_state == 170 else 170
+        self.servo_rotate(channel=4, angle=target_angle)
+        self.logger.info(f"Servo 4 toggled to {target_angle} degrees.")
+        self.servo4_state = target_angle
+
     def parse_config(self):
         """Parse configuration for different gripper types."""
         if self.gripper_type == "two_fingers":
             # Gripper Control Table (Two Fingers type)
             # Protocol: $A<Angle># where Angle is 3 digits (000-108)
             # Physical Limits: 000 (Max Open) to 108 (Max Close)
-            #
-            # | Action          | Angle | Command String | Python Bytes Code                            |
-            # |-----------------|-------|----------------|----------------------------------------------|
-            # | Max Open        | 000   | $A000#         | bytes([0x24, 0x41, 0x30, 0x30, 0x30, 0x23])  |
-            # | Partial Open 30 | 030   | $A030#         | bytes([0x24, 0x41, 0x30, 0x33, 0x30, 0x23])  |
-            # | Partial Open 50 | 050   | $A050#         | bytes([0x24, 0x41, 0x30, 0x35, 0x30, 0x23])  |
-            # | Middle          | 090   | $A090#         | bytes([0x24, 0x41, 0x30, 0x39, 0x30, 0x23])  |
-            # | Default Grasp   | 098   | $A098#         | bytes([0x24, 0x41, 0x30, 0x39, 0x38, 0x23])  |
-            # | Max Close       | 108   | $A108#         | bytes([0x24, 0x41, 0x31, 0x30, 0x38, 0x23])  |
-
-            self.grasp_data = bytes([0x24, 0x41, 0x30, 0x39, 0x38, 0x23])  # grasp command
-            self.release_data = bytes([0x24, 0x41, 0x30, 0x33, 0x30, 0x23])  # release command
-            self.port = "/dev/ttyUSB0"
+            self.grasp_data = bytes([0x24, 0x41, 0x31, 0x30, 0x38, 0x23])  # grasp command
+            self.release_data = bytes([0x24, 0x41, 0x30, 0x35, 0x30, 0x23])  # release command
 
         # sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
         else:
