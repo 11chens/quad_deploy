@@ -10,7 +10,7 @@ from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 
 
 class GripperNode(BaseNode):
-    def __init__(self, gripper_type="two_fingers", port="/dev/ttyUSB0", *args, **kwargs):
+    def __init__(self, gripper_type="two_fingers", gripper_port="/dev/ttyUSB0", *args, **kwargs):
         """Node to control the gripper via serial communication.
         Supported gripper types: "two_fingers", or "None" (sim serial port).
         """
@@ -23,10 +23,10 @@ class GripperNode(BaseNode):
         self.duration = 3.0  # duration to finish grasp or release action, in seconds
         self.start_time = None
         self.grasp_state = None
-        self.port = port
+        self.gripper_port = gripper_port
 
         self.serial_port = serial.Serial(
-            port=self.port,
+            port=self.gripper_port,
             baudrate=115200,  # Baud rate, can be modified as needed
             timeout=1,
         )
@@ -80,7 +80,7 @@ class GripperNode(BaseNode):
             self.release_data = bytes(
                 [0x7B, 0x01, 0x02, 0x00, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF9, 0x7D]
             )  # release command
-            self.port = "/tmp/pty10"
+            self.gripper_port = "/tmp/pty10"
 
     def send_hex_to_serial_port(self, hex_data):
         """Send hex data to serial port for gripper control."""

@@ -66,9 +66,9 @@ class HomiHandler(BaseHandlers):
             if hasattr(self, "_last_b_pressed"):
                 self._last_b_pressed = False
 
-        # if self.joystick.B:
-        #     grasp = not self.gripper.grasp_state  # Toggle grasp state
-        #     self.gripper.handle(grasp=grasp)
+        if self.joystick.start:
+            grasp = not self.gripper.grasp_state  # Toggle grasp state
+            self.gripper.handle(grasp=grasp)
         #     return None
 
         # RL Switch Logic

@@ -109,6 +109,7 @@ def main(args):
         dry_run=not args.nodryrun,
         auto=args.auto,
         gripper_type=args.gripper,
+        gripper_port=args.port,
     )
 
     manager.start_main_loop_timer(processes)
@@ -119,6 +120,12 @@ if __name__ == "__main__":
         {"name": "--wait_robot", "type": bool, "default": True, "help": "Wait for robot hardware."},
         {"name": "--wait_vlm", "type": bool, "default": True, "help": "Wait for VLM software."},
         {"name": "--gripper", "type": str, "default": "None", "help": "Gripper type."},
+        {
+            "name": "--port",
+            "type": str,
+            "default": "/dev/ttyUSB0",
+            "help": "Gripper serial port, choose /dev/ttyUSB0 or /dev/ttyUSB1.",
+        },
     ]
     args = parse_arguments(custom_params)
     (
