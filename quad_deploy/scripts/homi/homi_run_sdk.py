@@ -19,7 +19,7 @@ from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
 from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
-from quad_deploy.utils.parse_args import parse_arguments
+from quad_deploy.utils.parse_args import get_base_parser
 
 
 class HomiRunSDK(BaseManager):
@@ -181,7 +181,7 @@ def update_dict(
     args=None, nodes_dict: dict = {}, agents_dict: dict = {}, mp_nodes_dict: dict = {}, cmds_dict: dict = {}
 ):
     """Update the dicts for debugging in a simulated environment."""
-    if not args.nosimrun:
+    if args.sim_run:
         args.gripper = "none"
         cmds_dict["keyboard"] = (
             # "bash -c 'LD_LIBRARY_PATH=$HOME/miniforge3/envs/humble/lib:$LD_LIBRARY_PATH; source ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
@@ -229,15 +229,15 @@ def main(args=None):
         # ros_base args
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
-        node_freq_hz=50 if args.nosimrun else 200,
+        node_freq_hz=200 if args.sim_run else 50,
         start_state="cold_start",
         logdir=os.path.expanduser(logdir),
         custom_logger=CustomLogger,
         # log_freq=True,
         # custom args
         auto=args.auto,
-        dry_run=not args.nodryrun,
-        sim_run=not args.nosimrun,
+        dry_run=args.dry_run,
+        sim_run=args.sim_run,
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
         gripper_type=args.gripper,
@@ -247,20 +247,16 @@ def main(args=None):
 
 
 if __name__ == "__main__":
-    custom_parameters = [
-        {"name": "--wait_robot", "type": bool, "default": True, "help": "Waiting for robot return lowstate."},
-        {"name": "--wait_vlm", "type": bool, "default": True, "help": "Waiting for VLM return highstate."},
-        {
-            "name": "--gripper",
-            "type": str,
-            "default": "None",
-            "help": "Deciding what type of gripper to use (two_fingers, None).",
-        },
-    ]
+    parser = get_base_parser(description="Homi SDK")
+    parser.add_argument("--wait_robot", action="store_true", default=True, help="Waiting for robot return lowstate.")
+    parser.add_argument("--wait_vlm", action="store_true", default=True, help="Waiting for VLM return highstate.")
+    parser.add_argument(
+        "--gripper", type=str, default="None", help="Deciding what type of gripper to use (two_fingers, None)."
+    )
 
-    args = parse_arguments(custom_parameters)
+    args = parser.parse_args()
 
-    if not args.nosimrun:
+    if args.sim_run:
         ChannelFactoryInitialize(1, "lo")
         add_debug_mode(args=args, listen_port=7777)  # local attach
     else:

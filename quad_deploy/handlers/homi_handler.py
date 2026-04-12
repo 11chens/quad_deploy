@@ -50,23 +50,23 @@ class HomiHandler(BaseHandlers):
             self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
             return "human_teleop"
 
-        # Toggle servo 4 on B key
-        if self.joystick.B:
+        # Toggle gripper rotation on B key
+        if self.joystick.B and getattr(self.gripper, "has_rotation", False):
             if not hasattr(self, "_last_b_pressed"):
                 self._last_b_pressed = False
             if not self._last_b_pressed:
                 try:
-                    self.gripper.toggle_servo4()
-                    self.logger.info("Joystick B pressed: Servo 4 toggled.")
+                    self.gripper.toggle_rotation()
+                    self.logger.info("Joystick B pressed: Gripper rotation toggled.")
                 except Exception as e:
-                    self.logger.error(f"Failed to toggle servo 4 on B press: {e}")
+                    self.logger.error(f"Failed to toggle gripper rotation on B press: {e}")
                 self._last_b_pressed = True
             return None
         else:
             if hasattr(self, "_last_b_pressed"):
                 self._last_b_pressed = False
 
-        if self.joystick.start:
+        if self.joystick.start and getattr(self.gripper, "has_grasp", False):
             grasp = not self.gripper.grasp_state  # Toggle grasp state
             self.gripper.handle(grasp=grasp)
         #     return None

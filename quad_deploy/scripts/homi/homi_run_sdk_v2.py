@@ -19,7 +19,7 @@ from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 # Nodes & Agents
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
 from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
-from quad_deploy.utils.parse_args import parse_arguments
+from quad_deploy.utils.parse_args import get_base_parser
 
 
 class HomiRunSDKV2(BaseManager):
@@ -64,8 +64,9 @@ def setup_environment(args):
     cmds_dict = {}
 
     # Handle Simulation specifics
-    if not args.nosimrun:
-        args.gripper = "none"
+    if args.sim_run:
+        args.has_grasp_servo = False
+        args.has_rotation_servo = False
         from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode
 
         nodes_dict["keyboard"] = KeyboardSDKNode
@@ -75,7 +76,7 @@ def setup_environment(args):
             "Note: Please ensure ROS2 environment is sourced for keyboard node:\n`source ~/ros2_ws/install/setup.bash`"
         )
 
-    if args.gripper.lower() == "none":
+    if args.sim_gripper:
         cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11 &"
 
     return nodes_dict, agents_dict, mp_nodes_dict, cmds_dict
@@ -98,17 +99,19 @@ def main(args):
         node_name="HomiOrchestrator",
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
-        node_freq_hz=50 if args.nosimrun else 200,
+        node_freq_hz=200 if args.sim_run else 50,
         start_state="cold_start",
         logdir=logdir,  # Fixed: Path for ONNX models
         custom_logger=CustomLogger,
         # Custom parameters passed to Handler/Nodes
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
-        sim_run=not args.nosimrun,
-        dry_run=not args.nodryrun,
+        sim_run=args.sim_run,
+        dry_run=args.dry_run,
         auto=args.auto,
-        gripper_type=args.gripper,
+        has_rotation=args.has_rotation_servo,
+        has_grasp=args.has_grasp_servo,
+        use_sim_gripper=args.sim_gripper,
         gripper_port=args.port,
     )
 
@@ -116,24 +119,27 @@ def main(args):
 
 
 if __name__ == "__main__":
-    custom_params = [
-        {"name": "--wait_robot", "type": bool, "default": True, "help": "Wait for robot hardware."},
-        {"name": "--wait_vlm", "type": bool, "default": True, "help": "Wait for VLM software."},
-        {"name": "--gripper", "type": str, "default": "None", "help": "Gripper type."},
-        {
-            "name": "--port",
-            "type": str,
-            "default": "/dev/ttyUSB0",
-            "help": "Gripper serial port, choose /dev/ttyUSB0 or /dev/ttyUSB1.",
-        },
-    ]
-    args = parse_arguments(custom_params)
+    parser = get_base_parser(description="Homi SDK V2")
+    parser.add_argument("--wait_robot", action="store_true", default=True, help="Wait for robot hardware.")
+    parser.add_argument("--wait_vlm", action="store_true", default=True, help="Wait for VLM software.")
+    parser.add_argument(
+        "--has_rotation_servo", action="store_true", default=False, help="Enable rotation servo capability."
+    )
+    parser.add_argument(
+        "--has_grasp_servo", action="store_true", default=True, help="Enable real grasp servo capability."
+    )
+    parser.add_argument("--sim_gripper", action="store_true", default=False, help="Use simulated gripper port.")
+    parser.add_argument(
+        "--port", type=str, default="/dev/ttyUSB0", help="Gripper serial port, choose /dev/ttyUSB0 or /dev/ttyUSB1."
+    )
+
+    args = parser.parse_args()
     (
         # Unitree specific init
         ChannelFactoryInitialize(1, "lo")
-        if not args.nosimrun
+        if args.sim_run
         else ChannelFactoryInitialize(0, "eth0")
     )
-    add_debug_mode(args=args, listen_port=9999 if args.nosimrun else 7777)
+    add_debug_mode(args=args, listen_port=7777 if args.sim_run else 9999)
 
     main(args)

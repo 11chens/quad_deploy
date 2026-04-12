@@ -10,19 +10,37 @@ from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 
 
 class GripperNode(BaseNode):
-    def __init__(self, gripper_type="two_fingers", gripper_port="/dev/ttyUSB0", *args, **kwargs):
+    def __init__(
+        self, has_rotation=True, has_grasp=True, use_sim_gripper=False, gripper_port="/dev/ttyUSB0", *args, **kwargs
+    ):
         """Node to control the gripper via serial communication.
-        Supported gripper types: "two_fingers", or "None" (sim serial port).
+        Args:
+            has_rotation: bool, whether there is a rotation servo.
+            has_grasp: bool, whether there is a grasp servo.
+            use_sim_gripper: bool, whether to use simulated serial port.
         """
         super().__init__(*args, **kwargs)
 
-        # Configure serial port
-        self._support_gripper_types = ["two_fingers"]
-        self.gripper_type = gripper_type
+        self.has_rotation = has_rotation
+        self.has_grasp = has_grasp
+        self.use_sim_gripper = use_sim_gripper
+
+        # Servo Configuration
+        self.GRASP_SERVO_CHANNEL = 1
+        self.ROTATION_SERVO_CHANNEL = 4
+
+        # State definitions
+        self.GRASP_ANGLE_CLOSE = 180
+        self.GRASP_ANGLE_OPEN = 50
+
+        self.ROTATION_ANGLE_HORIZONTAL = 90
+        self.ROTATION_ANGLE_VERTICAL = 0
+
         self.parse_config()
         self.duration = 3.0  # duration to finish grasp or release action, in seconds
         self.start_time = None
         self.grasp_state = None
+        self.rotation_state = "horizontal"
         self.gripper_port = gripper_port
 
         self.serial_port = serial.Serial(
@@ -32,14 +50,14 @@ class GripperNode(BaseNode):
         )
 
         self.handle(grasp=False)  # initialize to released state
+        if self.has_rotation:
+            self.rotate_gripper(state="horizontal")  # initialize to horizontal state
 
-        # Initialize servo 4 to 170 degrees
-        self.servo4_state = 170
-        try:
-            self.servo_rotate(channel=4, angle=170)
-            self.logger.info("Servo channel 4 initialized to 170 degrees.")
-        except Exception as e:
-            self.logger.error(f"Failed to initialize servo 4: {e}")
+    def _generate_servo_cmd(self, channel, angle):
+        """Generate hex command bytes for physical servo control (protocol: $A<Angle>#)."""
+        servo_id = chr(ord("A") + channel - 1)
+        angle_str = f"{angle:03d}"
+        return bytes([0x24, ord(servo_id), ord(angle_str[0]), ord(angle_str[1]), ord(angle_str[2]), 0x23])
 
     def servo_rotate(self, channel, angle):
         if not (1 <= channel <= 24):
@@ -48,39 +66,53 @@ class GripperNode(BaseNode):
         if not (0 <= angle <= 180):
             self.logger.error("Servo angle must be between 0 and 180.")
             return
-        servo_id = chr(ord("A") + channel - 1)
-        angle_str = f"{angle:03d}"
-        datasend = [0x24, ord(servo_id), ord(angle_str[0]), ord(angle_str[1]), ord(angle_str[2]), 0x23]
+
+        datasend = self._generate_servo_cmd(channel, angle)
         try:
             if self.serial_port.is_open:
-                self.serial_port.write(bytes(datasend))
+                self.serial_port.write(datasend)
                 self.logger.info(f"Servo {channel} rotated to {angle} degrees.")
         except Exception as e:
             self.logger.error(f"Failed to rotate servo {channel}: {e}")
 
-    def toggle_servo4(self):
-        """Toggle servo 4 between 80 and 170 degrees."""
-        target_angle = 80 if self.servo4_state == 170 else 170
-        self.servo_rotate(channel=4, angle=target_angle)
-        self.logger.info(f"Servo 4 toggled to {target_angle} degrees.")
-        self.servo4_state = target_angle
+    def rotate_gripper(self, state: str):
+        """Rotate gripper to 'horizontal' or 'vertical' state."""
+        if not self.has_rotation:
+            self.logger.warning("Rotation servo is disabled. Ignoring rotate command.")
+            return
+
+        if state not in ["horizontal", "vertical"]:
+            self.logger.error(f"Invalid rotation state: {state}")
+            return
+
+        target_angle = self.ROTATION_ANGLE_HORIZONTAL if state == "horizontal" else self.ROTATION_ANGLE_VERTICAL
+        self.servo_rotate(channel=self.ROTATION_SERVO_CHANNEL, angle=target_angle)
+        self.rotation_state = state
+        self.logger.info(f"Gripper rotated to {state} state (angle {target_angle}).")
+
+    def toggle_rotation(self):
+        """Toggle gripper rotation between horizontal and vertical."""
+        if not self.has_rotation:
+            self.logger.warning("Rotation servo is disabled. Ignoring toggle command.")
+            return
+        target_state = "vertical" if self.rotation_state == "horizontal" else "horizontal"
+        self.rotate_gripper(target_state)
 
     def parse_config(self):
         """Parse configuration for different gripper types."""
-        if self.gripper_type == "two_fingers":
-            # Gripper Control Table (Two Fingers type)
-            # Protocol: $A<Angle># where Angle is 3 digits (000-108)
-            # Physical Limits: 000 (Max Open) to 108 (Max Close)
-            self.grasp_data = bytes([0x24, 0x41, 0x31, 0x30, 0x38, 0x23])  # grasp command
-            self.release_data = bytes([0x24, 0x41, 0x30, 0x35, 0x30, 0x23])  # release command
-
-        # sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
-        else:
+        if self.use_sim_gripper:
+            # sim port: socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11
             self.grasp_data = bytes([0x7B, 0x01, 0x02, 0x01, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF8, 0x7D])  # grasp command
             self.release_data = bytes(
                 [0x7B, 0x01, 0x02, 0x00, 0x20, 0x49, 0x20, 0x00, 0xC8, 0xF9, 0x7D]
             )  # release command
             self.gripper_port = "/tmp/pty10"
+        elif self.has_grasp:
+            self.grasp_data = self._generate_servo_cmd(self.GRASP_SERVO_CHANNEL, self.GRASP_ANGLE_CLOSE)
+            self.release_data = self._generate_servo_cmd(self.GRASP_SERVO_CHANNEL, self.GRASP_ANGLE_OPEN)
+        else:
+            self.grasp_data = b""
+            self.release_data = b""
 
     def send_hex_to_serial_port(self, hex_data):
         """Send hex data to serial port for gripper control."""
@@ -100,28 +132,25 @@ class GripperNode(BaseNode):
 
     def handle(self, grasp):
         """Handle the gripper action based on the grasp command."""
-        # if self.gripper_type not in self._support_gripper_types:
-        #     self.logger.warning(f"Gripper type '{self.gripper_type}' not supported. No action taken.")
-        #     self.start_time = self.timestamp
-        #     return
+        if not self.has_grasp and not self.use_sim_gripper:
+            # self.logger.warning("Grasp servo is disabled. Ignoring grasp command.")
+            self.start_time = self.timestamp
+            return
 
         if self.start_time is None:
             self.start_time = self.timestamp
 
         self.grasp_state = grasp
 
-        if grasp:  # True: pick, False: place
-            try:
-                self.send_hex_to_serial_port(self.grasp_data)
-                self.logger.info("Start grasping - sent grasp command to gripper.")
-            except Exception as e:
-                self.logger.error(f"Failed to execute grasp command: {e}")
-        else:
-            try:
-                self.send_hex_to_serial_port(self.release_data)
-                self.logger.info("Start releasing - sent release command to gripper.")
-            except Exception as e:
-                self.logger.error(f"Failed to execute release command: {e}")
+        target_data = self.grasp_data if grasp else self.release_data
+        action_name = "grasping" if grasp else "releasing"
+
+        try:
+            if target_data:
+                self.send_hex_to_serial_port(target_data)
+                self.logger.info(f"Start {action_name} - sent command to gripper.")
+        except Exception as e:
+            self.logger.error(f"Failed to execute {action_name} command: {e}")
 
     @property
     def done(self):
