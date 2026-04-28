@@ -157,27 +157,6 @@ class HomiNavAgent(BaseRLAgent):
         action, _, _, _ = self.loco_agent.step()
         self.nav_timestamp += 1  # each step is 0.02s
 
-        # Logging
-        if self.robot.sim_run:
-            if self.nav_timestamp % 5 == 0:
-                # Use dictionary for structured logging
-                log_step = {
-                    "base_lin_vel": np.array(self.loco_agent.base_lin_vel_pred).flatten(),  # 3
-                    "base_ang_vel": np.array(self.robot.base_ang_vel).flatten(),  # 3
-                    "euler_rpy": np.array(self.robot.euler_rpy).flatten(),  # 3
-                    "projected_gravity": np.array(self.robot.projected_gravity).flatten(),  # 3
-                    "nav_commands": self.commands.flatten(),  # 3 * 3
-                    "task_flag": self.task_flag.flatten(),  # 1
-                    "actions": self.orig_actions.flatten(),  # 4
-                }
-                self.log_data.append(log_step)
-
-            if self.nav_timestamp == 300:
-                # Convert list of dicts to dict of arrays for np.savez
-                save_dict = {k: np.array([step[k] for step in self.log_data]) for k in self.log_data[0].keys()}
-                np.savez(self.log_path, **save_dict)
-                self.logger.important(f"[Nav] Saved navigation log to {self.log_path}")
-
         return action, None, None, self.done
 
     def reset(self):
@@ -204,18 +183,13 @@ class HomiNavAgent(BaseRLAgent):
     @property
     def commands(self):
         if self._cached_commands is None:
-            # 1. Get Raw Commands
             raw_cmds = np.array(
                 self.vlm.sigma_3d_cam[0 : self.num_commands // 3],
                 dtype=np.float32,
             ).reshape(-1)
 
-            # 2. Apply Optional EMA Filter
+            # Apply Optional EMA Filter
             if self.cfg.enable_ema_filter:
-                # Check if task is Place (task_flag > 0.5)
-                # Alpha strategy matches Sim:
-                # - If Place Task: Use cfg.ema_alpha (e.g. 0.3) for smoothing
-                # - If Pick/Other: Use 1.0 (Passthrough / No Filter)
                 is_place = self.task_flag[0] > 0.5
                 alpha = self.cfg.ema_alpha if is_place else 1.0
 
@@ -225,21 +199,6 @@ class HomiNavAgent(BaseRLAgent):
                 self._cached_commands = raw_cmds
 
         return self._cached_commands
-
-    # @property
-    # def task_flag(self):
-    #     if self.state == "gripper_start":
-    #         return self._task_flag_buf # keep previous value during gripper action
-
-    #     # 1.0: place (closed), 0.0: pick (open)
-    #     grasp_flag = float(self.gripper.grasp_state)
-
-    #     # Avoid creating new numpy array every time
-    #     if not hasattr(self, "_task_flag_buf"):
-    #         self._task_flag_buf = np.zeros(1, dtype=np.float32)
-
-    #     self._task_flag_buf[0] = grasp_flag
-    #     return self._task_flag_buf
 
     @property
     def last_action(self):

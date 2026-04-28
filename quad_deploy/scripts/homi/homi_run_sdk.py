@@ -1,204 +1,53 @@
 import os
-import sys
-import time
 
-import numpy as np
 import rclpy
 from ros_base.manager.base_manager import BaseManager, register_multiprocess_nodes
 from ros_base.utils.args_debug import add_debug_mode
 from ros_base.utils.logger import CustomLogger
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent as HomiLocoAgent
+from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
 from quad_deploy.agents.homi.homi_nav_agent import HomiNavAgent
-
-# from quad_deploy.agents.homi.homi_nav_gru_agent import HomiNavGruAgent as HomiNavAgent
 from quad_deploy.agents.homi.homi_turn_agent import HomiTurnAgent
 from quad_deploy.agents.stand_agent import StandAgent
+
+# The Logic Processor (FSM)
+from quad_deploy.handlers.homi_handler import HomiHandler
 from quad_deploy.nodes.homi.gripper_node import GripperNode
 from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
+
+# Nodes & Agents
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
 from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
 from quad_deploy.utils.parse_args import get_base_parser
 
 
 class HomiRunSDK(BaseManager):
-    def __init__(
-        self,
-        wait_robot=True,
-        wait_vlm=True,
-        node_name="HomiRunSDK",
-        *args,
-        **kwargs,
-    ):
-        """Main class to run the Homi robot for manipulation tasks using VLM and joystick.
-        Args:
-            wait_robot (bool): Whether to wait for the robot to return lowstate before starting.
-            wait_vlm (bool): Whether to wait for VLM to return highstate before starting navigation.
-            node_name (str): Name of the ROS2 node.
-        """
-        super().__init__(node_name=node_name, *args, **kwargs)
+    """
+    Refactored Runner for Homi.
+    Logic and state transitions are now in HomiHandler.
+    This class focus purely on high-level orchestration and handshaking.
+    """
 
-        self.wait_robot = wait_robot
-        self.wait_vlm = wait_vlm
+    def __init__(self, *args, **kwargs):
+        # 1. Inject the handler class before init
+        kwargs["handlers_class"] = HomiHandler
+        super().__init__(*args, **kwargs)
 
-        self.curr_agent_r: StandAgent = self.agents["stand"]
+        # 2. Setup Handshake Rules (Co-design: using the new rules API)
+        wait_robot = kwargs.get("wait_robot", True)
+        wait_vlm = kwargs.get("wait_vlm", False)
 
-        self.robot: UnitreeGo2Node = self.nodes["robot"]
-        self.gripper: GripperNode = self.nodes["gripper"]
+        if wait_robot:
+            self.add_handshake_rule("Robot Connection", lambda: hasattr(self.nodes.get("robot"), "low_state"))
 
-        self.vlm: VLM2BobotBridge = self.nodes["vlm"]
-        self.joystick: JoystickNode = self.nodes["joystick"]
-
-    def get_state_switch(self):
-        """Determine if we need to switch to a different agent based on the done flag, joystick or VLM outputs.
-        Return None for not switching, or the name of the agent to switch to.
-        """
-        if self.joystick.L2:
-            self.logger.warning("Robot will shut down motors.")
-            return "emergency"
-
-        if self.joystick.L1 and self.state == "emergency":
-            self.logger.info("Robot will recovery.")
-            return "recovery"
-
-        if self.joystick.R2:
-            self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
-            return "human_teleop"
-
-        if self.joystick.B:
-            grasp = not self.gripper.grasp_state  # Toggle grasp state
-            self.gripper.handle(grasp=grasp)
-            return None
-
-        # ================ Switch RL agent ================ #
-        if (self.state == "cold_start" or self.state == "recovery") and self.agents["stand"].done:
-            self.logger.log_once("[stand] agent returns done, waiting for press [X] to switch.")
-            if self.joystick.X:
-                return "human_teleop"
-            return None
-
-        if self.state == "human_teleop" and self.joystick.R1:
-            self.logger.important(
-                "[loco] The autonomous control is [ON]. Please pay attention to the safety of the robot."
-            )
-            return "turn"
-
-        if self.state == "turn" and self.wait_vlm:
-            if not self.robot.sim_run:
-                has_sigma = self.vlm.sigma_3d_cam is not None
-                has_object = self.vlm.object_ready
-
-                if has_sigma and has_object:
-                    self.logger.info("VLM messages <sigma_3d_cam> and <object_ready> received, starting navigation!")
-                    return "navigation"
-                else:
-                    wait_msgs = []
-                    if not has_sigma:
-                        wait_msgs.append("<sigma_3d_cam>")
-                    if not has_object:
-                        wait_msgs.append("<object_ready>")
-
-                    ready_msgs = []
-                    if has_sigma:
-                        ready_msgs.append("<sigma_3d_cam>")
-                    if has_object:
-                        ready_msgs.append("<object_ready>")
-
-                    log_msg = f"Waiting for VLM: {', '.join(wait_msgs)}."
-                    if ready_msgs:
-                        log_msg += f" (Received: {', '.join(ready_msgs)})"
-
-                    self.logger.log_once(log_msg)
-                    return None
-            else:
-                self.logger.log_once("Waiting for VLM message: <sigma_3d_cam>.")
-                if self.vlm.sigma_3d_cam is not None:
-                    self.logger.info("VLM message <sigma_3d_cam> received, starting navigation!")
-                    return "navigation"
-
-        if self.state == "navigation" and self.joystick.A:
-            return "gripper_start"
-
-        if self.state == "gripper_start" and self.gripper.done:
-            self.vlm.publish_grasp_done(grasp_done=True)
-            return "turn"  # after grasp done, turn to box
-
-        if self.state == "gripper_done" and self.vlm.vlm_done:
-            return "turn"
-
-        return None
-
-    def state_handle(self, switch_to_state):
-        if switch_to_state == "emergency":
-            self.robot.turn_off_motors()
-
-        elif switch_to_state == "recovery":
-            self.curr_agent_r = self.agents["stand"]
-            self.curr_agent_r.reset()
-            self.logger.reset()
-            self.timestamp = 0
-            self.robot.init_motors()
-
-        elif switch_to_state == "cold_start":
-            self.curr_agent_r = self.agents["stand"]
-            self.curr_agent_r.reset()
-
-        elif switch_to_state == "human_teleop":
-            self.curr_agent_r = self.agents["loco"]
-            self.curr_agent_r.reset()
-
-        elif switch_to_state == "turn":
-            self.logger.reset()
-            self.vlm.reset()
-            self.curr_agent_r = self.agents["turn"]
-            self.curr_agent_r.reset()
-            self.vlm.publish_rl_ready(rl_ready=True)
-
-        elif switch_to_state == "navigation":
-            self.curr_agent_r = self.agents["nav"]
-            self.curr_agent_r.reset()
-
-        elif switch_to_state == "gripper_start":
-            self.gripper.start_time = self.timestamp
-            grasp = not self.gripper.grasp_state  # Toggle grasp state
-            self.gripper.handle(grasp=grasp)
-
-        if not self.state == "emergency":
-            self.curr_agent_r.handle()
-            self.vlm.publish_robot_euler_rpy(euler_rpy=self.robot.euler_rpy)
-
-    def handshake(self):
-        if self.wait_robot:
-            self.logger.log_once("Waiting for robot low state message")
-            if hasattr(self.robot, "low_state"):
-                self.logger.info("Low state message received, the robot is ready to go")
-                return True
-            return False
+    def init_custom_variables(self):
+        # Override to add anything else
+        pass
 
 
-def update_dict(
-    args=None, nodes_dict: dict = {}, agents_dict: dict = {}, mp_nodes_dict: dict = {}, cmds_dict: dict = {}
-):
-    """Update the dicts for debugging in a simulated environment."""
-    if args.sim_run:
-        args.gripper = "none"
-        cmds_dict["keyboard"] = (
-            # "bash -c 'LD_LIBRARY_PATH=$HOME/miniforge3/envs/humble/lib:$LD_LIBRARY_PATH; source ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
-            "bash -c 'source ~/ros2_ws/install/setup.bash; ros2 run keyboard keyboard' &"
-        )
-
-        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode as KeyboardNode
-
-        nodes_dict.update({"keyboard": KeyboardNode})
-
-    if args.gripper.lower() == "none":
-        cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11 &"
-
-    return nodes_dict, agents_dict, mp_nodes_dict, cmds_dict
-
-
-def main(args=None):
+def setup_environment(args):
+    """Encapsulated environment setup."""
     nodes_dict = {
         "robot": UnitreeGo2Node,
         "vlm": VLM2BobotBridge,
@@ -211,57 +60,87 @@ def main(args=None):
         "nav": HomiNavAgent,
         "turn": HomiTurnAgent,
     }
-
     mp_nodes_dict = {}
+    cmds_dict = {}
 
-    logdir = "~/Data/onboard_data/onnx_models/homi"
+    # Handle Simulation specifics
+    if args.sim_run:
+        args.has_grasp_servo = False
+        args.has_rotation_servo = False
+        from quad_deploy.nodes.sdk.keyboard_sdk import KeyboardSDKNode
 
-    nodes_dict, agents_dict, mp_nodes_dict, cmds_dict = update_dict(
-        args=args, nodes_dict=nodes_dict, agents_dict=agents_dict, mp_nodes_dict=mp_nodes_dict
-    )
+        nodes_dict["keyboard"] = KeyboardSDKNode
+        # Ensure `source ~/ros2_ws/install/setup.bash` first
+        cmds_dict["keyboard"] = "bash -c 'source ~/ros2_ws/install/setup.bash && ros2 run keyboard keyboard' &"
+        print(
+            "Note: Please ensure ROS2 environment is sourced for keyboard node:\n`source ~/ros2_ws/install/setup.bash`"
+        )
 
-    # Importantly, sub processes call rclpy.init() first, then the main process can call rclpy.init(), because rclpy can only be initialized once.
+    if args.sim_gripper or args.sim_run:
+        # Ensure socat is installed and available: `sudo apt install socat`
+        cmds_dict["sim_port"] = "socat -d -d pty,raw,echo=0,link=/tmp/pty10 pty,raw,echo=0,link=/tmp/pty11 &"
+
+    return nodes_dict, agents_dict, mp_nodes_dict, cmds_dict
+
+
+def main(args):
+    nodes_dict, agents_dict, mp_nodes_dict, cmds_dict = setup_environment(args)
+
+    # 1. Spawn sub-processes first (ROS requirement for rclpy.init order)
     processes = register_multiprocess_nodes(mp_nodes_dict, cmds_dict)
 
+    # 2. Main Process initialization
     rclpy.init()
 
-    homi_robot_node = HomiRunSDK(
-        # ros_base args
+    # Model path setup
+    logdir = os.path.expanduser("~/Data/onboard_data/onnx_models/homi")
+
+    # 3. Start Orchestrator
+    manager = HomiRunSDK(
+        node_name="HomiOrchestrator",
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
         node_freq_hz=200 if args.sim_run else 50,
         start_state="cold_start",
-        logdir=os.path.expanduser(logdir),
+        logdir=logdir,  # Fixed: Path for ONNX models
         custom_logger=CustomLogger,
-        # log_freq=True,
-        # custom args
-        auto=args.auto,
-        dry_run=args.dry_run,
-        sim_run=args.sim_run,
+        # Custom parameters passed to Handler/Nodes
         wait_robot=args.wait_robot,
         wait_vlm=args.wait_vlm,
-        gripper_type=args.gripper,
+        sim_run=args.sim_run,
+        dry_run=args.dry_run,
+        auto=args.auto,
+        has_rotation=args.has_rotation_servo,
+        has_grasp=args.has_grasp_servo,
+        use_sim_gripper=True if (args.sim_gripper or args.sim_run) else False,
+        gripper_port=args.port,
     )
 
-    homi_robot_node.start_main_loop_timer(processes)
+    manager.start_main_loop_timer(processes)
 
 
 if __name__ == "__main__":
-    parser = get_base_parser(description="Homi SDK")
-    parser.add_argument("--wait_robot", action="store_true", default=True, help="Waiting for robot return lowstate.")
-    parser.add_argument("--wait_vlm", action="store_true", default=True, help="Waiting for VLM return highstate.")
+    parser = get_base_parser(description="Homi SDK ")
+    parser.add_argument("--wait_robot", action="store_true", default=True, help="Wait for robot hardware.")
+    parser.add_argument("--wait_vlm", action="store_true", default=True, help="Wait for VLM software.")
     parser.add_argument(
-        "--gripper", type=str, default="None", help="Deciding what type of gripper to use (two_fingers, None)."
+        "--has_rotation_servo", action="store_true", default=False, help="Enable rotation servo capability."
     )
-
+    parser.add_argument(
+        "--has_grasp_servo", action="store_true", default=True, help="Enable real grasp servo capability."
+    )
+    parser.add_argument("--sim_gripper", action="store_true", default=False, help="Use simulated gripper port.")
+    parser.add_argument(
+        "--port", type=str, default="/dev/ttyUSB0", help="Gripper serial port, choose /dev/ttyUSB0 or /dev/ttyUSB1."
+    )
+    parser.add_argument("--data", type=str, default="~/Data/onboard_data/onnx_models/homi", help="Directory of model.")
     args = parser.parse_args()
-
-    if args.sim_run:
+    (
+        # Unitree specific init
         ChannelFactoryInitialize(1, "lo")
-        add_debug_mode(args=args, listen_port=7777)  # local attach
-    else:
-        ChannelFactoryInitialize(0, "eth0")
-        add_debug_mode(args=args, listen_port=9999)  # unitree_wireless
-        # add_debug_mode(args=args, listen_port=7777)  # unitree_wire
+        if args.sim_run
+        else ChannelFactoryInitialize(0, "eth0")
+    )
+    add_debug_mode(args=args, listen_port=7777 if args.sim_run else 9999)
 
-    main(args=args)
+    main(args)

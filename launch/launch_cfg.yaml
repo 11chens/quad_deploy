@@ -1,0 +1,18 @@
+# Node Orchestration Configuration (Project: Quad Example)
+sessions:
+  - env:
+      session_name: "quad_system"
+      workspace_root: "~/Projects"
+      conda_env: "ros_env"
+      ros_setup: "~/ros2_ws/install/setup.bash"
+
+    nodes:
+      - name: "RL_CONTROL"
+        project: "quad_deploy"
+        cpus: "1"
+        command: "python quad_deploy/scripts/homi/homi_run_sdk.py"
+
+      - name: "MUJOCO_SIM"
+        project: "unitree_mujoco_ros"
+        cpus: "2"
+        command: "python mujoco_ros2/simulate/sdk/unitree_mujoco.py"

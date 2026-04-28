@@ -36,12 +36,12 @@ class GripperNode(BaseNode):
         self.ROTATION_ANGLE_HORIZONTAL = 90
         self.ROTATION_ANGLE_VERTICAL = 0
 
+        self.gripper_port = gripper_port
         self.parse_config()
         self.duration = 3.0  # duration to finish grasp or release action, in seconds
         self.start_time = None
         self.grasp_state = None
         self.rotation_state = "horizontal"
-        self.gripper_port = gripper_port
 
         self.serial_port = serial.Serial(
             port=self.gripper_port,
