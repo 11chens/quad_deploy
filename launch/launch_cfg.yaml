@@ -7,10 +7,16 @@ sessions:
       ros_setup: "~/ros2_ws/install/setup.bash"
 
     nodes:
-      - name: "RL_CONTROL"
+      - name: "RL_CONTROL_SIM"
         project: "quad_deploy"
         cpus: "1"
         command: "python quad_deploy/scripts/homi/homi_run_sdk.py"
+
+      - name: "RL_CONTROL_REAL"
+        project: "quad_deploy"
+        cpus: "1"
+        command: "python quad_deploy/scripts/homi/homi_run_sdk.py --nosimrun  --nodryrun --auto"
+        autostart: false
 
       - name: "MUJOCO_SIM"
         project: "unitree_mujoco_ros"

@@ -37,21 +37,30 @@ cd unitree_sdk2_python
 pip install -e .
 ```
 
-# Usage (MuJoCo Simulation)
+# Usage
 
-To run the system in the MuJoCo simulation environment, follow these steps:
+To run the system, follow these steps:
 
-#### 1. Activate the Environment
+#### 1. Activate the Environment {Optional}
 Activate your ROS2 conda environment:
 ```bash
 conda activate ros_env
 ```
 
 #### 2. Launch the System
-Run the launch script from the `quad_deploy` directory:
+Run the launch script from the `quad_deploy` directory. By default, this will run in MuJoCo Simulation.
+
+**For MuJoCo Simulation (Default):**
 ```bash
 cd ~/Projects/quad_deploy
 python launch/quad_launch.py
+```
+
+**For Real Robot Deployment:**
+To run on the real robot, you can disable the simulation nodes and explicitly enable the real control node using command-line arguments (so you don't have to modify the YAML file):
+```bash
+cd ~/Projects/quad_deploy
+python launch/quad_launch.py --disable RL_CONTROL_SIM MUJOCO_SIM --enable RL_CONTROL_REAL
 ```
 
 *Expected output:*
