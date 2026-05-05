@@ -20,6 +20,7 @@ from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
 from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
 from quad_deploy.utils.parse_args import get_base_parser
+from quad_deploy.agents.homi.auto_trigger_agent import AutoTriggerAgent
 
 
 class HomiRunSDK(BaseManager):
@@ -59,6 +60,7 @@ def setup_environment(args):
         "loco": HomiLocoAgent,
         "nav": HomiNavAgent,
         "turn": HomiTurnAgent,
+        "auto_trigger": AutoTriggerAgent,
     }
     mp_nodes_dict = {}
     cmds_dict = {}

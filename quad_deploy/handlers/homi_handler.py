@@ -1,4 +1,5 @@
 import time
+import numpy as np
 
 from ros_base.handlers.base_handlers import BaseHandlers
 
@@ -16,6 +17,9 @@ class HomiHandler(BaseHandlers):
         # State Control
         self.curr_agent = self.agents.get("stand")
         self.wait_vlm = kwargs.get("wait_vlm", True)
+
+        # Setup AutoTriggerAgent
+        self.auto_trigger = self.agents.get("auto_trigger")
 
     def handle(self):
         """Main state machine logic moved from Manager."""
@@ -74,6 +78,19 @@ class HomiHandler(BaseHandlers):
         # RL Switch Logic
         current_state = self.state
 
+        # Process automatic triggers first
+        trigger_results = {}
+        # Only evaluate triggers during the navigation state
+        if current_state == "navigation":
+            if "loco" in self.agents and hasattr(self.agents["loco"], "base_lin_vel_pred"):
+                lin_vel = self.agents["loco"].base_lin_vel_pred
+                if lin_vel is not None:
+                    lin_vel_norm = float(np.linalg.norm(lin_vel))
+                    trigger_results = self.auto_trigger.evaluate_triggers(lin_vel_norm=lin_vel_norm)
+        elif self.auto_trigger is not None:
+            # Reset timers when outside of navigation to avoid false accumulation from cold starts
+            self.auto_trigger.reset()
+
         if (current_state in ["cold_start", "recovery"]) and self.agents["stand"].done:
             self.logger.log_once("[stand] agent returns done, waiting for press [X] to switch.")
             if self.joystick.X:
@@ -118,7 +135,11 @@ class HomiHandler(BaseHandlers):
                     self.logger.info("VLM message <sigma_3d_cam> received, starting navigation!")
                     return "navigation"
 
-        if current_state == "navigation" and self.joystick.A:
+        # Check for auto_release or manual 'A' button override during navigation
+        if current_state == "navigation" and (self.joystick.A or trigger_results.get("auto_release", False)):
+            if trigger_results.get("auto_release", False):
+                self.logger.important("Auto Trigger evaluating to TRUE: Overriding manual input to trigger gripper_start.")
+            # Trigger gripper
             return "gripper_start"
 
         if current_state == "gripper_start" and self.gripper.done:
