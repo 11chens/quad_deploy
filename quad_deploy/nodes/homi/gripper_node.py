@@ -6,8 +6,6 @@ import numpy as np
 import serial
 from ros_base.nodes.base_node import BaseNode
 
-from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
-
 
 class GripperNode(BaseNode):
     def __init__(

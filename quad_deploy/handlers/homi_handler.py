@@ -54,26 +54,10 @@ class HomiHandler(BaseHandlers):
             self.logger.info("The autonomous control is [OFF]. Please control the robot using joystck.")
             return "human_teleop"
 
-        # Toggle gripper rotation on B key
-        if self.joystick.B and getattr(self.gripper, "has_rotation", False):
-            if not hasattr(self, "_last_b_pressed"):
-                self._last_b_pressed = False
-            if not self._last_b_pressed:
-                try:
-                    self.gripper.toggle_rotation()
-                    self.logger.info("Joystick B pressed: Gripper rotation toggled.")
-                except Exception as e:
-                    self.logger.error(f"Failed to toggle gripper rotation on B press: {e}")
-                self._last_b_pressed = True
-            return None
-        else:
-            if hasattr(self, "_last_b_pressed"):
-                self._last_b_pressed = False
-
+        # Asynchronous Gripper Control (can be triggered in any state)
         if self.joystick.start and getattr(self.gripper, "has_grasp", False):
-            grasp = not self.gripper.grasp_state  # Toggle grasp state
+            grasp = not self.gripper.grasp_state
             self.gripper.handle(grasp=grasp)
-        #     return None
 
         # RL Switch Logic
         current_state = self.state
@@ -135,8 +119,8 @@ class HomiHandler(BaseHandlers):
                     self.logger.info("VLM message <sigma_3d_cam> received, starting navigation!")
                     return "navigation"
 
-        # Check for auto_release or manual 'A' button override during navigation
-        if current_state == "navigation" and (self.joystick.A or trigger_results.get("auto_release", False)):
+        # Check for auto_release during navigation
+        if current_state == "navigation" and trigger_results.get("auto_release", False):
             if trigger_results.get("auto_release", False):
                 self.logger.important("Auto Trigger evaluating to TRUE: Overriding manual input to trigger gripper_start.")
             # Trigger gripper

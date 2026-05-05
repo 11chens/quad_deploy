@@ -95,7 +95,7 @@ def main(args):
     rclpy.init()
 
     # Model path setup
-    logdir = os.path.expanduser("~/Data/onboard_data/onnx_models/homi")
+    logdir = os.path.expanduser(args.data)
 
     # 3. Start Orchestrator
     manager = HomiRunSDK(
@@ -104,7 +104,7 @@ def main(args):
         agents_dict=agents_dict,
         node_freq_hz=200 if args.sim_run else 50,
         start_state="cold_start",
-        logdir=logdir,  # Fixed: Path for ONNX models
+        logdir=logdir,
         custom_logger=CustomLogger,
         # Custom parameters passed to Handler/Nodes
         wait_robot=args.wait_robot,
