@@ -1,7 +1,7 @@
 from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 
 
-class HomiLocoAgentCfg(BaseAgentCfg):
+class SigLoMaLocoAgentCfg(BaseAgentCfg):
     num_commands = 4
     num_props = 47
     len_history = 5

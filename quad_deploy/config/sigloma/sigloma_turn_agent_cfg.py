@@ -1,7 +1,7 @@
 from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 
 
-class HomiTurnAgentCfg(BaseAgentCfg):
+class SigLoMaTurnAgentCfg(BaseAgentCfg):
     # (u, v, depth)
     num_commands = 3
     # (vx, vy, vyaw, pitch)

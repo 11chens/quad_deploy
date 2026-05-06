@@ -7,27 +7,27 @@ import onnxruntime as ort
 from ros_base.utils.decorators import profile_latency
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
-from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
-from quad_deploy.config.homi.homi_nav_agent_cfg import HomiNavAgentCfg
-from quad_deploy.nodes.homi.gripper_node import GripperNode
-from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
+from quad_deploy.agents.sigloma.sigloma_loco_agent import SigLoMaLocoAgent
+from quad_deploy.config.sigloma.sigloma_nav_agent_cfg import SigLoMaNavAgentCfg
+from quad_deploy.nodes.sigloma.gripper_node import GripperNode
+from quad_deploy.nodes.sigloma.vlm2robot import VLM2BobotBridge
 
 
-class HomiNavGruAgent(BaseRLAgent):
-    def __init__(self, cfg=HomiNavAgentCfg, *args, **kwargs):
+class SigLoMaNavGruAgent(BaseRLAgent):
+    def __init__(self, cfg=SigLoMaNavAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
         self.vlm: VLM2BobotBridge = self.nodes.get("vlm")
         self.gripper: GripperNode = self.nodes.get("gripper")
-        self.loco_agent: HomiLocoAgent = self.agents.get("loco")
-        self.cfg: HomiNavAgentCfg
+        self.loco_agent: SigLoMaLocoAgent = self.agents.get("loco")
+        self.cfg: SigLoMaNavAgentCfg
         self.loco_agent.post_clip = self.cfg.post_clip
         self.loco_agent.smooth_factor = self.cfg.smooth_factor
         self.orig_actions = np.zeros(self.cfg.num_actions, dtype=np.float32)
         self._cached_commands = None
 
         self.log_data = []
-        self.log_path = os.path.join(os.path.expanduser("~"), "homi_nav_gru_log.npz")
+        self.log_path = os.path.join(os.path.expanduser("~"), "sigloma_nav_gru_log.npz")
 
         # Pre-allocate clip bounds to avoid creating lists every step
         self._clip_lower = np.array([-3.0] * self.cfg.num_actions, dtype=np.float32)

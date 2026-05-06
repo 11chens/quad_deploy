@@ -4,11 +4,11 @@ import numpy as np
 from ros_base.handlers.base_handlers import BaseHandlers
 
 
-class HomiHandler(BaseHandlers):
+class SigLoMaHandler(BaseHandlers):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Shortcuts for Homi components
+        # Shortcuts for SigLoMa components
         self.robot = self.nodes.get("robot")
         self.gripper = self.nodes.get("gripper")
         self.vlm = self.nodes.get("vlm")

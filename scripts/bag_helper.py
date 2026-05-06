@@ -82,11 +82,11 @@ def play_and_visualize(bag_paths, show_raw=False):
     print("Starting visualization node (vlm2ui.py)...")
     # Assuming the workspace is sourced and the script is executable or in python path
     # Adjust the path to vlm2ui.py as needed based on your workspace structure
-    vlm2ui_path = "quad_deploy/nodes/homi/vlm2ui.py"
+    vlm2ui_path = "quad_deploy/nodes/sigloma/vlm2ui.py"
     # We try to find the absolute path if possible, or assume running from workspace root
     if not os.path.exists(vlm2ui_path):
         # Try absolute path based on known structure
-        vlm2ui_path = "/home/jump/Project/quad_deploy/quad_deploy/nodes/homi/vlm2ui.py"
+        vlm2ui_path = "/home/jump/Project/quad_deploy/quad_deploy/nodes/sigloma/vlm2ui.py"
 
     if not os.path.exists(vlm2ui_path):
         print(f"Error: Could not find vlm2ui.py at {vlm2ui_path}")

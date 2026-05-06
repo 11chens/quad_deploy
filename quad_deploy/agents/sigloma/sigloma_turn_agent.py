@@ -6,17 +6,17 @@ import onnxruntime as ort
 from ros_base.utils.math_utils import warp2pi
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
-from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
+from quad_deploy.agents.sigloma.sigloma_loco_agent import SigLoMaLocoAgent
 from quad_deploy.config.base_agent_cfg import BaseAgentCfg
-from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
+from quad_deploy.nodes.sigloma.vlm2robot import VLM2BobotBridge
 
 
-class HomiTurnAgent(BaseRLAgent):
+class SigLoMaTurnAgent(BaseRLAgent):
     def __init__(self, cfg=BaseAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
         self.vlm: VLM2BobotBridge = self.nodes.get("vlm")
-        self.loco_agent: HomiLocoAgent = self.agents.get("loco")
+        self.loco_agent: SigLoMaLocoAgent = self.agents.get("loco")
 
         self.yaw_threshold = 0.05
         self.max_yaw_vel = 1.0

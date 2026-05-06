@@ -4,8 +4,8 @@ import numpy as np
 import onnxruntime as ort
 from ros_base.agents.base_agent import BaseAgent
 
-from quad_deploy.nodes.homi.gripper_node import GripperNode
-from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
+from quad_deploy.nodes.sigloma.gripper_node import GripperNode
+from quad_deploy.nodes.sigloma.vlm2robot import VLM2BobotBridge
 
 
 class ArmAgent(BaseAgent):

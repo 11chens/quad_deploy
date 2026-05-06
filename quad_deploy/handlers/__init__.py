@@ -1,1 +1,1 @@
-from .homi_handler import HomiHandler
+from .sigloma_handler import SigLoMaHandler

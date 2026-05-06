@@ -4,11 +4,11 @@ import numpy as np
 import onnxruntime as ort
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
-from quad_deploy.config.homi.homi_loco_agent_cfg import HomiLocoAgentCfg
+from quad_deploy.config.sigloma.sigloma_loco_agent_cfg import SigLoMaLocoAgentCfg
 
 
-class HomiLocoAgent(BaseRLAgent):
-    def __init__(self, cfg=HomiLocoAgentCfg, *args, **kwargs):
+class SigLoMaLocoAgent(BaseRLAgent):
+    def __init__(self, cfg=SigLoMaLocoAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
     def load_model(self):

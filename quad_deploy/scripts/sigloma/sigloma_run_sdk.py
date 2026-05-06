@@ -6,33 +6,33 @@ from ros_base.utils.args_debug import add_debug_mode
 from ros_base.utils.logger import CustomLogger
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-from quad_deploy.agents.homi.homi_loco_agent import HomiLocoAgent
-from quad_deploy.agents.homi.homi_nav_agent import HomiNavAgent
-from quad_deploy.agents.homi.homi_turn_agent import HomiTurnAgent
+from quad_deploy.agents.sigloma.sigloma_loco_agent import SigLoMaLocoAgent
+from quad_deploy.agents.sigloma.sigloma_nav_agent import SigLoMaNavAgent
+from quad_deploy.agents.sigloma.sigloma_turn_agent import SigLoMaTurnAgent
 from quad_deploy.agents.stand_agent import StandAgent
 
 # The Logic Processor (FSM)
-from quad_deploy.handlers.homi_handler import HomiHandler
-from quad_deploy.nodes.homi.gripper_node import GripperNode
-from quad_deploy.nodes.homi.vlm2robot import VLM2BobotBridge
+from quad_deploy.handlers.sigloma_handler import SigLoMaHandler
+from quad_deploy.nodes.sigloma.gripper_node import GripperNode
+from quad_deploy.nodes.sigloma.vlm2robot import VLM2BobotBridge
 
 # Nodes & Agents
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
 from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
 from quad_deploy.utils.parse_args import get_base_parser
-from quad_deploy.agents.homi.auto_trigger_agent import AutoTriggerAgent
+from quad_deploy.agents.sigloma.auto_trigger_agent import AutoTriggerAgent
 
 
-class HomiRunSDK(BaseManager):
+class SigLoMaRunSDK(BaseManager):
     """
-    Refactored Runner for Homi.
-    Logic and state transitions are now in HomiHandler.
+    Refactored Runner for SigLoMa.
+    Logic and state transitions are now in SigLoMaHandler.
     This class focus purely on high-level orchestration and handshaking.
     """
 
     def __init__(self, *args, **kwargs):
         # 1. Inject the handler class before init
-        kwargs["handlers_class"] = HomiHandler
+        kwargs["handlers_class"] = SigLoMaHandler
         super().__init__(*args, **kwargs)
 
         # 2. Setup Handshake Rules (Co-design: using the new rules API)
@@ -57,9 +57,9 @@ def setup_environment(args):
     }
     agents_dict = {
         "stand": StandAgent,
-        "loco": HomiLocoAgent,
-        "nav": HomiNavAgent,
-        "turn": HomiTurnAgent,
+        "loco": SigLoMaLocoAgent,
+        "nav": SigLoMaNavAgent,
+        "turn": SigLoMaTurnAgent,
         "auto_trigger": AutoTriggerAgent,
     }
     mp_nodes_dict = {}
@@ -98,8 +98,8 @@ def main(args):
     logdir = os.path.expanduser(args.data)
 
     # 3. Start Orchestrator
-    manager = HomiRunSDK(
-        node_name="HomiOrchestrator",
+    manager = SigLoMaRunSDK(
+        node_name="SigLoMaOrchestrator",
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
         node_freq_hz=200 if args.sim_run else 50,
@@ -122,7 +122,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = get_base_parser(description="Homi SDK ")
+    parser = get_base_parser(description="SigLoMa SDK ")
     parser.add_argument("--wait_robot", action="store_true", default=True, help="Wait for robot hardware.")
     parser.add_argument("--wait_vlm", action="store_true", default=True, help="Wait for VLM software.")
     parser.add_argument(
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port", type=str, default="/dev/ttyUSB0", help="Gripper serial port, choose /dev/ttyUSB0 or /dev/ttyUSB1."
     )
-    parser.add_argument("--data", type=str, default="~/Data/onboard_data/onnx_models/homi", help="Directory of model.")
+    parser.add_argument("--data", type=str, default="~/Data/onboard_data/onnx_models/sigloma", help="Directory of model.")
     args = parser.parse_args()
     (
         # Unitree specific init
