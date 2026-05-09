@@ -17,7 +17,7 @@ class KeyboardSDKNode(BaseNode):
         super().__init__(*args, **kwargs)
 
         from keyboard_msgs.msg import Key
-        
+
         self.WirelessButtons = WirelessButtons()
         self.keydown_sub = self.create_subscription(Key, keyboard_topic, self._keydown_callback, 1)
         self.joy_stick_topic = joy_stick_topic

@@ -1,6 +1,6 @@
 import time
-import numpy as np
 
+import numpy as np
 from ros_base.handlers.base_handlers import BaseHandlers
 
 
@@ -122,7 +122,9 @@ class SigLoMaHandler(BaseHandlers):
         # Check for auto_release during navigation
         if current_state == "navigation" and trigger_results.get("auto_release", False):
             if trigger_results.get("auto_release", False):
-                self.logger.important("Auto Trigger evaluating to TRUE: Overriding manual input to trigger gripper_start.")
+                self.logger.important(
+                    "Auto Trigger evaluating to TRUE: Overriding manual input to trigger gripper_start."
+                )
             # Trigger gripper
             return "gripper_start"
 

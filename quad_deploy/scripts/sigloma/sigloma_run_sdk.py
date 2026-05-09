@@ -6,6 +6,7 @@ from ros_base.utils.args_debug import add_debug_mode
 from ros_base.utils.logger import CustomLogger
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
+from quad_deploy.agents.sigloma.auto_trigger_agent import AutoTriggerAgent
 from quad_deploy.agents.sigloma.sigloma_loco_agent import SigLoMaLocoAgent
 from quad_deploy.agents.sigloma.sigloma_nav_agent import SigLoMaNavAgent
 from quad_deploy.agents.sigloma.sigloma_turn_agent import SigLoMaTurnAgent
@@ -13,14 +14,13 @@ from quad_deploy.agents.stand_agent import StandAgent
 
 # The Logic Processor (FSM)
 from quad_deploy.handlers.sigloma_handler import SigLoMaHandler
-from quad_deploy.nodes.sigloma.gripper_node import GripperNode
-from quad_deploy.nodes.sigloma.vlm2robot import VLM2BobotBridge
 
 # Nodes & Agents
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
 from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
+from quad_deploy.nodes.sigloma.gripper_node import GripperNode
+from quad_deploy.nodes.sigloma.vlm2robot import VLM2BobotBridge
 from quad_deploy.utils.parse_args import get_base_parser
-from quad_deploy.agents.sigloma.auto_trigger_agent import AutoTriggerAgent
 
 
 class SigLoMaRunSDK(BaseManager):
@@ -135,7 +135,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port", type=str, default="/dev/ttyUSB0", help="Gripper serial port, choose /dev/ttyUSB0 or /dev/ttyUSB1."
     )
-    parser.add_argument("--data", type=str, default="~/Data/onboard_data/onnx_models/sigloma", help="Directory of model.")
+    parser.add_argument(
+        "--data", type=str, default="~/Data/onboard_data/onnx_models/sigloma", help="Directory of model."
+    )
     args = parser.parse_args()
     (
         # Unitree specific init
