@@ -115,6 +115,7 @@ class AutoTriggerAgent(BaseAgent):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.verbose = kwargs.get("auto_trigger_verbose", False)
         # Structure: { "event_name" : [condition, condition2, ...] }
         # AND logic is applied by default (all conditions must be true to trigger)
         self.triggers: Dict[str, List[BaseCondition]] = {}
@@ -173,9 +174,8 @@ class AutoTriggerAgent(BaseAgent):
                 if not met:
                     all_met = False
 
-            # Log debug info periodically to avoid terminal flooding
             msg_str = " | ".join(debug_msgs)
-            if self.logger:
+            if self.verbose and self.logger:
                 if hasattr(self.logger, "log_throttle"):
                     self.logger.log_throttle(f"[Auto] {trigger_name}: {msg_str}", seconds=1.0)
                 else:

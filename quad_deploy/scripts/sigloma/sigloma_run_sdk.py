@@ -116,6 +116,7 @@ def main(args):
         has_grasp=args.has_grasp_servo,
         use_sim_gripper=True if (args.sim_gripper or args.sim_run) else False,
         gripper_port=args.port,
+        auto_trigger_verbose=args.auto_trigger_verbose,
     )
 
     manager.start_main_loop_timer(processes)
@@ -137,6 +138,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--data", type=str, default="~/Data/onboard_data/onnx_models/sigloma", help="Directory of model."
+    )
+    parser.add_argument(
+        "--auto_trigger_verbose",
+        action="store_true",
+        default=False,
+        help="Print periodic auto-trigger condition details.",
     )
     args = parser.parse_args()
     (
