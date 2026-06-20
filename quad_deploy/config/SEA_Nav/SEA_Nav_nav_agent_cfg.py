@@ -58,9 +58,11 @@ class SEA_Nav_NavAgentCfg(BaseAgentCfg):
     rays_clip_max = 3.0
 
     # ----- goal in the world frame -----
-    # Default placeholder: 5 m ahead of the world origin. Override per trial
-    # via cmdline (--goal_x / --goal_y) or by editing this field.
-    goal_world = [5.0, 0.0]
+    # Matches the simulator's goal for ``--seed 42`` (any difficulty): the
+    # spawn / goal are sampled before the obstacles, so the goal is
+    # deterministic for a fixed seed. Override per trial via cmdline
+    # (--goal_x / --goal_y) or by editing this field.
+    goal_world = [1.94, 3.34]
 
     # ----- RaysSubNode kwargs (forwarded to the node by the manager) -----
     rays_topic = "/rays"

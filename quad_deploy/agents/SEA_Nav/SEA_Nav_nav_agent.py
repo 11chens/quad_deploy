@@ -75,6 +75,12 @@ class SEA_Nav_NavAgent(BaseRLAgent):
         self.input_name = self.policy.get_inputs()[0].name
         self.output_names = [out.name for out in self.policy.get_outputs()]
 
+    def _set_loco_command(self, command):
+        if hasattr(self.loco_agent, "set_nav_command"):
+            self.loco_agent.set_nav_command(command)
+        else:
+            self.loco_agent.pre_cmds = np.asarray(command, dtype=np.float32).copy()
+
     # ------------------------------------------------------------------
     # Observation
     # ------------------------------------------------------------------
@@ -160,7 +166,7 @@ class SEA_Nav_NavAgent(BaseRLAgent):
         # filtered command is forwarded or zeroed out.
         # Use np.clip(...) returning a new array (instead of np.clip(out=...))
         # to stay portable across numpy versions.
-        action_clipped = np.clip(action, self.cfg.pre_clip_lo, self.cfg.pre_clip_hi).astype(np.float32)
+        action_clipped = np.clip(action, self._pre_clip_lo, self._pre_clip_hi).astype(np.float32)
         ema = (1.0 - self.cfg.smooth_factor) * self.filtered_action + self.cfg.smooth_factor * action_clipped
         self.filtered_action = np.clip(ema, self._limit_lo, self._limit_hi).astype(np.float32)
 
@@ -169,9 +175,9 @@ class SEA_Nav_NavAgent(BaseRLAgent):
         # state on prolonged outage based on this ``perception_fresh`` flag.
         self.perception_fresh = self.rays_sub.is_fresh() and self.pose_sub.is_fresh()
         if self.perception_fresh:
-            self.loco_agent.pre_cmds = self.filtered_action.copy()
+            self._set_loco_command(self.filtered_action)
         else:
-            self.loco_agent.pre_cmds = np.zeros(self.cfg.num_commands, dtype=np.float32)
+            self._set_loco_command(np.zeros(self.cfg.num_commands, dtype=np.float32))
             if hasattr(self.logger, "log_throttle"):
                 self.logger.log_throttle(
                     "[SEA_Nav_NavAgent] perception not fresh "

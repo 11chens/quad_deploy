@@ -12,8 +12,9 @@
 #
 # Goal alignment: ``unitree_mujoco.py`` samples a goal at startup (using
 # ``--seed`` for reproducibility) and prints ``[Scene] goal=(x, y)``. The
-# SEA-Nav side reads the goal from ``SEA_Nav_NavAgentCfg.goal_world`` (default
-# ``[5.0, 0.0]``); pass matching ``--goal_x/--goal_y`` to the controller so
+# SEA-Nav side reads the goal from ``SEA_Nav_NavAgentCfg.goal_world``, whose
+# default ``[1.94, 3.34]`` matches ``--seed 42`` below. If you change the seed,
+# pass the printed goal via matching ``--goal_x/--goal_y`` to the controller so
 # both sides target the same point.
 
 sessions:

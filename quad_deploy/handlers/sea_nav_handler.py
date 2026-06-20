@@ -82,7 +82,7 @@ class SEA_Nav_Handler(BaseHandlers):
             return "emergency"
 
         if self.joystick.L1 and self.state == "emergency":
-            self.logger.info("Robot will recovery.")
+            self.logger.info("Robot will recover.")
             return "recovery"
 
         # R2 = manual takeover (from navigation or safe_stop)

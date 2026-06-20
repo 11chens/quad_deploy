@@ -18,23 +18,6 @@ sessions:
         command: "python quad_deploy/scripts/sigloma/sigloma_run_sdk.py --nosimrun  --nodryrun --auto"
         autostart: false
 
-      # SEA-Nav alternatives (autostart=false). Enable with e.g.:
-      #   python launch/quad_launch.py --enable SEA_NAV_CONTROL_SIM --disable RL_CONTROL_SIM
-      # Or simply use the dedicated launch/sea_nav_launch_cfg.yaml.
-      - name: "SEA_NAV_CONTROL_SIM"
-        project: "quad_deploy"
-        cpus: "1"
-        # Keep sim launch aligned with RL_CONTROL_SIM defaults. Navigation
-        # takeover is handled inside SEA_Nav_NavAgent.reset().
-        command: "python -m quad_deploy.scripts.SEA_Nav.sea_nav_run_sdk"
-        autostart: false
-
-      - name: "SEA_NAV_CONTROL_REAL"
-        project: "quad_deploy"
-        cpus: "1"
-        command: "python -m quad_deploy.scripts.SEA_Nav.sea_nav_run_sdk --nosimrun --nodryrun"
-        autostart: false
-
       - name: "MUJOCO_SIM"
         project: "unitree_mujoco_ros"
         cpus: "2"
