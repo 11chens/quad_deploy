@@ -6,31 +6,31 @@ from ros_base.utils.args_debug import add_debug_mode
 from ros_base.utils.logger import CustomLogger
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-from quad_deploy.agents.SEA_Nav.SEA_Nav_loco_agent import SEA_Nav_LocoAgent
-from quad_deploy.agents.SEA_Nav.SEA_Nav_nav_agent import SEA_Nav_NavAgent
+from quad_deploy.agents.sea.sea_loco_agent import SEALocoAgent
+from quad_deploy.agents.sea.sea_nav_agent import SEANavAgent
 from quad_deploy.agents.stand_agent import StandAgent
-from quad_deploy.config.SEA_Nav.SEA_Nav_nav_agent_cfg import SEA_Nav_NavAgentCfg
+from quad_deploy.config.sea.sea_nav_agent_cfg import SEANavAgentCfg
 
 # The Logic Processor (FSM)
-from quad_deploy.handlers.sea_nav_handler import SEA_Nav_Handler
+from quad_deploy.handlers.sea_handler import SEAHandler
 
 # Nodes
 from quad_deploy.nodes.sdk.robot_go2_sdk import UnitreeGo2SDKNode as UnitreeGo2Node
 from quad_deploy.nodes.sdk.wireless_sdk import JoystickSDKNode as JoystickNode
-from quad_deploy.nodes.SEA_Nav.pose_sub_node import PoseSubNode
-from quad_deploy.nodes.SEA_Nav.rays_sub_node import RaysSubNode
+from quad_deploy.nodes.sea.pose_sub_node import PoseSubNode
+from quad_deploy.nodes.sea.rays_sub_node import RaysSubNode
 from quad_deploy.utils.parse_args import get_base_parser
 
 
-class SEA_Nav_RunSDK(BaseManager):
+class SEARunSDK(BaseManager):
     """Top-level orchestrator for SEA-Nav deployment.
 
-    Logic and state transitions live in :class:`SEA_Nav_Handler`; this class
+    Logic and state transitions live in :class:`SEAHandler`; this class
     only registers nodes / agents and runs the handshake.
     """
 
     def __init__(self, *args, **kwargs):
-        kwargs["handlers_class"] = SEA_Nav_Handler
+        kwargs["handlers_class"] = SEAHandler
         super().__init__(*args, **kwargs)
 
         wait_robot = kwargs.get("wait_robot", True)
@@ -54,8 +54,8 @@ def setup_environment(args):
     }
     agents_dict = {
         "stand": StandAgent,
-        "loco": SEA_Nav_LocoAgent,
-        "nav": SEA_Nav_NavAgent,
+        "loco": SEALocoAgent,
+        "nav": SEANavAgent,
     }
     mp_nodes_dict = {}
     cmds_dict = {}
@@ -74,7 +74,7 @@ def setup_environment(args):
 
 
 def maybe_override_goal_world(args):
-    """Override ``SEA_Nav_NavAgentCfg.goal_world`` from cmdline arguments
+    """Override ``SEANavAgentCfg.goal_world`` from cmdline arguments
     before the Nav agent is instantiated.
 
     The Nav agent reads and caches ``cfg.goal_world`` in ``__init__``, so the
@@ -83,9 +83,9 @@ def maybe_override_goal_world(args):
     """
     if args.goal_x is None and args.goal_y is None:
         return
-    gx = args.goal_x if args.goal_x is not None else SEA_Nav_NavAgentCfg.goal_world[0]
-    gy = args.goal_y if args.goal_y is not None else SEA_Nav_NavAgentCfg.goal_world[1]
-    SEA_Nav_NavAgentCfg.goal_world = [float(gx), float(gy)]
+    gx = args.goal_x if args.goal_x is not None else SEANavAgentCfg.goal_world[0]
+    gy = args.goal_y if args.goal_y is not None else SEANavAgentCfg.goal_world[1]
+    SEANavAgentCfg.goal_world = [float(gx), float(gy)]
 
 
 def main(args):
@@ -115,9 +115,9 @@ def main(args):
     # agent and the two subscriber nodes share a single source of truth. The
     # manager passes every kwarg below to each registered node; nodes that
     # don't recognise a kwarg ignore it.
-    nav_cfg = SEA_Nav_NavAgentCfg
+    nav_cfg = SEANavAgentCfg
 
-    manager = SEA_Nav_RunSDK(
+    manager = SEARunSDK(
         node_name="SEANavOrchestrator",
         nodes_dict=nodes_dict,
         agents_dict=agents_dict,
@@ -144,7 +144,7 @@ def main(args):
         pose_frame_id=nav_cfg.pose_frame_id,
         pose_timeout_s=nav_cfg.pose_timeout_s,
         pose_expected_freq_hz=nav_cfg.pose_expected_freq_hz,
-        # ---- Safe-stop FSM thresholds (forwarded to SEA_Nav_Handler) ----
+        # ---- Safe-stop FSM thresholds (forwarded to SEAHandler) ----
         safe_stop_timeout_s=args.safe_stop_timeout_s,
         safe_stop_recover_s=args.safe_stop_recover_s,
     )
@@ -165,13 +165,13 @@ if __name__ == "__main__":
         "--goal_x",
         type=float,
         default=None,
-        help="Override SEA_Nav_NavAgentCfg.goal_world[0] (world frame x in meters).",
+        help="Override SEANavAgentCfg.goal_world[0] (world frame x in meters).",
     )
     parser.add_argument(
         "--goal_y",
         type=float,
         default=None,
-        help="Override SEA_Nav_NavAgentCfg.goal_world[1] (world frame y in meters).",
+        help="Override SEANavAgentCfg.goal_world[1] (world frame y in meters).",
     )
     parser.add_argument(
         "--safe_stop_timeout_s",

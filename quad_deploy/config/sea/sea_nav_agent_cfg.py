@@ -1,7 +1,7 @@
 from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 
 
-class SEA_Nav_NavAgentCfg(BaseAgentCfg):
+class SEANavAgentCfg(BaseAgentCfg):
     """Configuration for the SEA-Nav high-level (CBF-shielded) policy.
 
     The agent consumes a 55-dim single-step observation::

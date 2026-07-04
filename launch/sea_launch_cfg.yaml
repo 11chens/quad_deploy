@@ -1,39 +1,39 @@
 # Node orchestration configuration for SEA-Nav (sim-to-sim).
 #
-# Starts two tmux panes inside the `sea_nav_system` tmux session:
-#   1. SEA_NAV_CONTROL_SIM - the quad_deploy controller (Nav + Loco + safe-stop)
-#   2. MUJOCO_SIM          - the unitree_mujoco_ros simulator (publishes /rays
-#                            and /pose; subscribes to robot commands).
+# Starts two tmux panes inside the `sea_system` tmux session:
+#   1. SEA_CONTROL_SIM - the quad_deploy controller (Nav + Loco + safe-stop)
+#   2. MUJOCO_SIM      - the unitree_mujoco_ros simulator (publishes /rays
+#                        and /pose; subscribes to robot commands).
 #
 # Quick start:
 #   cd ~/Projects
-#   python launch/quad_launch.py launch/sea_nav_launch_cfg.yaml
-#   tmux attach -t sea_nav_system   # in another terminal
+#   python launch/quad_launch.py launch/sea_launch_cfg.yaml
+#   tmux attach -t sea_system   # in another terminal
 #
 # Goal alignment: ``unitree_mujoco.py`` samples a goal at startup (using
 # ``--seed`` for reproducibility) and prints ``[Scene] goal=(x, y)``. The
-# SEA-Nav side reads the goal from ``SEA_Nav_NavAgentCfg.goal_world``, whose
+# SEA-Nav side reads the goal from ``SEANavAgentCfg.goal_world``, whose
 # default ``[1.94, 3.34]`` matches ``--seed 42`` below. If you change the seed,
 # pass the printed goal via matching ``--goal_x/--goal_y`` to the controller so
 # both sides target the same point.
 
 sessions:
   - env:
-      session_name: "sea_nav_system"
+      session_name: "sea_system"
       workspace_root: "~/Projects"
       conda_env: "ros_env"
       ros_setup: "~/ros2_ws/install/setup.bash"
 
     nodes:
-      - name: "SEA_NAV_CONTROL_SIM"
+      - name: "SEA_CONTROL_SIM"
         project: "quad_deploy"
         cpus: "1"
-        command: "python -m quad_deploy.scripts.SEA_Nav.sea_nav_run_sdk"
+        command: "python -m quad_deploy.scripts.sea.sea_run_sdk"
 
-      - name: "SEA_NAV_CONTROL_REAL"
+      - name: "SEA_CONTROL_REAL"
         project: "quad_deploy"
         cpus: "1"
-        command: "python -m quad_deploy.scripts.SEA_Nav.sea_nav_run_sdk --nosimrun --nodryrun"
+        command: "python -m quad_deploy.scripts.sea.sea_run_sdk --nosimrun --nodryrun"
         autostart: false
 
       - name: "MUJOCO_SIM"

@@ -85,7 +85,7 @@ The control stack ships **two run modes**, selected by the launch config passed 
 | Mode | Launch config | Description |
 |---|---|---|
 | **Loco** | `launch_cfg.yaml` (default) | Basic locomotion control, in MuJoCo or on the real robot. |
-| **SEA-Nav** | `sea_nav_launch_cfg.yaml` | Autonomous point-goal navigation: a CBF-shielded navigation policy steers the locomotion policy toward a world-frame goal, with a safe-stop fallback when perception drops out. |
+| **SEA-Nav** | `sea_launch_cfg.yaml` | Autonomous point-goal navigation: a CBF-shielded navigation policy steers the locomotion policy toward a world-frame goal, with a safe-stop fallback when perception drops out. |
 
 #### Prerequisites (both modes)
 Activate the ROS2 conda environment and source the keyboard workspace so the in-sim control window works:
@@ -154,21 +154,21 @@ ONNX models are loaded from `~/Data/onboard_data/onnx_models/sea_nav/` (override
 **Simulation:**
 ```bash
 cd ~/Projects/quad_deploy
-python launch/quad_launch.py launch/sea_nav_launch_cfg.yaml
-tmux attach -t sea_nav_system
+python launch/quad_launch.py launch/sea_launch_cfg.yaml
+tmux attach -t sea_system
 ```
 
-**Goal alignment.** The simulator samples a start/goal layout from `--seed` and prints `[Scene] ... goal=(x, y)`. The navigation agent reads its goal from `SEA_Nav_NavAgentCfg.goal_world`, whose default already matches `--seed 42`. If you change the seed, pass the printed goal to the controller:
+**Goal alignment.** The simulator samples a start/goal layout from `--seed` and prints `[Scene] ... goal=(x, y)`. The navigation agent reads its goal from `SEANavAgentCfg.goal_world`, whose default already matches `--seed 42`. If you change the seed, pass the printed goal to the controller:
 ```bash
 cd ~/Projects/quad_deploy
-python -m quad_deploy.scripts.SEA_Nav.sea_nav_run_sdk --goal_x <GX> --goal_y <GY>
+python -m quad_deploy.scripts.sea.sea_run_sdk --goal_x <GX> --goal_y <GY>
 ```
 
 **For Real Robot Deployment:** enable the real control node and provide a goal measured in the same world frame as `/pose`:
 ```bash
 cd ~/Projects/quad_deploy
-python launch/quad_launch.py launch/sea_nav_launch_cfg.yaml \
-    --enable SEA_NAV_CONTROL_REAL --disable SEA_NAV_CONTROL_SIM MUJOCO_SIM
+python launch/quad_launch.py launch/sea_launch_cfg.yaml \
+    --enable SEA_CONTROL_REAL --disable SEA_CONTROL_SIM MUJOCO_SIM
 ```
 
 **Keyboard controls (state machine).** Drive the robot through the SEA-Nav FSM from the keyboard window:
