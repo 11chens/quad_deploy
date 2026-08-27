@@ -1,7 +1,7 @@
 from quad_deploy.config.base_agent_cfg import BaseAgentCfg
 
 
-class SEA_Nav_LocoAgentCfg(BaseAgentCfg):
+class SEALocoAgentCfg(BaseAgentCfg):
     """Configuration for the SEA-Nav low-level (velocity-tracking) policy.
 
     The agent consumes a 47-dim single-step observation::

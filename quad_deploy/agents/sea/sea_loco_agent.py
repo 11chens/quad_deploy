@@ -4,10 +4,10 @@ import numpy as np
 import onnxruntime as ort
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
-from quad_deploy.config.SEA_Nav.SEA_Nav_loco_agent_cfg import SEA_Nav_LocoAgentCfg
+from quad_deploy.config.sea.sea_loco_agent_cfg import SEALocoAgentCfg
 
 
-class SEA_Nav_LocoAgent(BaseRLAgent):
+class SEALocoAgent(BaseRLAgent):
     """Low-level locomotion (velocity-tracking) agent.
 
     Consumes the high-level command from the Nav agent (or the joystick in
@@ -27,7 +27,7 @@ class SEA_Nav_LocoAgent(BaseRLAgent):
     pass-through (``smooth_factor=1.0``, ``post_clip=False``).
     """
 
-    def __init__(self, cfg=SEA_Nav_LocoAgentCfg, *args, **kwargs):
+    def __init__(self, cfg=SEALocoAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
         self.command_pitch = float(getattr(cfg, "command_pitch", 0.0))
 

@@ -4,7 +4,7 @@ import numpy as np
 from ros_base.handlers.base_handlers import BaseHandlers
 
 
-class SEA_Nav_Handler(BaseHandlers):
+class SEAHandler(BaseHandlers):
     """Finite-state machine that orchestrates the SEA-Nav deployment.
 
     State transitions::

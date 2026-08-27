@@ -5,13 +5,13 @@ import onnxruntime as ort
 from ros_base.utils.decorators import profile_latency
 
 from quad_deploy.agents.base_rl_agent import BaseRLAgent
-from quad_deploy.agents.SEA_Nav.SEA_Nav_loco_agent import SEA_Nav_LocoAgent
-from quad_deploy.config.SEA_Nav.SEA_Nav_nav_agent_cfg import SEA_Nav_NavAgentCfg
-from quad_deploy.nodes.SEA_Nav.pose_sub_node import PoseSubNode
-from quad_deploy.nodes.SEA_Nav.rays_sub_node import RaysSubNode
+from quad_deploy.agents.sea.sea_loco_agent import SEALocoAgent
+from quad_deploy.config.sea.sea_nav_agent_cfg import SEANavAgentCfg
+from quad_deploy.nodes.sea.pose_sub_node import PoseSubNode
+from quad_deploy.nodes.sea.rays_sub_node import RaysSubNode
 
 
-class SEA_Nav_NavAgent(BaseRLAgent):
+class SEANavAgent(BaseRLAgent):
     """High-level CBF-shielded navigation agent.
 
     Each control tick:
@@ -34,13 +34,13 @@ class SEA_Nav_NavAgent(BaseRLAgent):
     escalates to ``safe_stop`` when the outage persists.
     """
 
-    def __init__(self, cfg=SEA_Nav_NavAgentCfg, *args, **kwargs):
+    def __init__(self, cfg=SEANavAgentCfg, *args, **kwargs):
         super().__init__(cfg=cfg, *args, **kwargs)
 
-        self.loco_agent: SEA_Nav_LocoAgent = self.agents.get("loco")
+        self.loco_agent: SEALocoAgent = self.agents.get("loco")
         self.rays_sub: RaysSubNode = self.nodes.get("rays_sub")
         self.pose_sub: PoseSubNode = self.nodes.get("pose_sub")
-        self.cfg: SEA_Nav_NavAgentCfg
+        self.cfg: SEANavAgentCfg
 
         # Pre-allocated clip bounds to avoid per-step list allocations.
         self._pre_clip_lo = np.full(self.cfg.num_actions, self.cfg.pre_clip_lo, dtype=np.float32)
@@ -180,7 +180,7 @@ class SEA_Nav_NavAgent(BaseRLAgent):
             self._set_loco_command(np.zeros(self.cfg.num_commands, dtype=np.float32))
             if hasattr(self.logger, "log_throttle"):
                 self.logger.log_throttle(
-                    "[SEA_Nav_NavAgent] perception not fresh "
+                    "[SEANavAgent] perception not fresh "
                     f"(rays_dt={self.rays_sub.time_since_last_msg():.3f}s, "
                     f"pose_dt={self.pose_sub.time_since_last_msg():.3f}s); pre_cmds=0.",
                     seconds=1.0,
@@ -188,7 +188,7 @@ class SEA_Nav_NavAgent(BaseRLAgent):
                 )
             else:
                 self.logger.warning(
-                    "[SEA_Nav_NavAgent] perception not fresh; pre_cmds=0.",
+                    "[SEANavAgent] perception not fresh; pre_cmds=0.",
                     once=True,
                 )
 
@@ -217,7 +217,7 @@ class SEA_Nav_NavAgent(BaseRLAgent):
 
     def reset(self):
         # Navigation state must always consume high-level nav commands. Human
-        # teleop still restores joystick control through SEA_Nav_LocoAgent.reset().
+        # teleop still restores joystick control through SEALocoAgent.reset().
         self.loco_agent.wireless = False
         self.filtered_action[:] = 0.0
         self.obs_hist.reset()
