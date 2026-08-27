@@ -73,7 +73,7 @@ source ~/ros2_ws/install/setup.bash
 
 #### 8. Download model weights
 
-The ONNX policy weights are hosted on [Google Drive](https://drive.google.com/drive/folders/1x_RYzCHrujCawauw_7cilkf5EsyE4KCq?usp=drive_link). The shared folder is named `onnx_models` and contains two subfolders — `sigloma` (used by the default **Loco** mode) and `sea_nav` (used by **SEA-Nav** mode). Download it into `~/Data/onboard_data/` so the layout matches the default `--data` paths:
+The ONNX policy weights are hosted on [Google Drive](https://drive.google.com/drive/folders/1x_RYzCHrujCawauw_7cilkf5EsyE4KCq?usp=drive_link). The shared folder is named `onnx_models` and contains two subfolders — `sigloma` (**low-level controller**, used by the default **Loco mode**) and `sea_nav` (**high-level planner**， used by **SEA-Nav mode**). Download it into `~/Data/onboard_data/` so the layout matches the default `--data` paths:
 
 ```bash
 mkdir -p ~/Data/onboard_data
@@ -88,10 +88,10 @@ Keep each subfolder exactly as downloaded. The key files the deploy scripts load
 
 ```text
 ~/Data/onboard_data/onnx_models/
-├── sigloma/                 # default Loco mode (--data default)
+├── sigloma/                 # default low-level Loco mode (--data default)
 │   ├── loco_model/model.onnx
 │   └── nav_model/model.onnx
-└── sea_nav/                 # SEA-Nav mode (--data default)
+└── sea_nav/                 # high-level SEA-Nav mode (--data default)
     ├── loco_model/model.onnx
     └── nav_model/model.onnx
 ```
@@ -105,8 +105,8 @@ The control stack ships **two run modes**, selected by the launch config passed 
 
 | Mode        | Launch config               | Description                                                                                                                                                                     |
 | ----------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Loco**    | `launch_cfg.yaml` (default) | Basic locomotion control, in MuJoCo or on the real robot.                                                                                                                       |
-| **SEA-Nav** | `sea_launch_cfg.yaml`       | Autonomous point-goal navigation: a CBF-shielded navigation policy steers the locomotion policy toward a world-frame goal, with a safe-stop fallback when perception drops out. |
+| **Loco (low-level controller)**    | `launch_cfg.yaml` (default) | Basic locomotion control, in MuJoCo or on the real robot.                                                                                                                       |
+| **SEA-Nav (high-level planner)** | `sea_launch_cfg.yaml`       | Autonomous point-goal navigation: a CBF-shielded navigation policy steers the locomotion policy toward a world-frame goal, with a safe-stop fallback when perception drops out. |
 
 
 
@@ -124,7 +124,7 @@ source ~/ros2_ws/install/setup.bash
 
 
 
-## Mode 1: Loco (default)
+## Mode 1: Loco (default, low-level controller)
 
 Run the launch script from the `quad_deploy` directory. With no config argument it defaults to `launch_cfg.yaml`, which starts locomotion control in MuJoCo:
 
@@ -175,7 +175,7 @@ tmux attach -t quad_system
 
 
 
-## Mode 2: SEA-Nav (autonomous navigation)
+## Mode 2: SEA-Nav (autonomous navigation, high-level planner)
 
 SEA-Nav uses its own launch config. The simulator publishes a 2D lidar scan on `/rays` and the robot world pose on `/pose`; the navigation policy then steers the locomotion policy toward a goal defined in the world frame.
 
@@ -211,14 +211,6 @@ The default `--seed 42` already matches the navigation goal. If you change the s
 
 
 During `navigation` the policy drives automatically; if `/rays` or `/pose` go stale for more than 1 s the robot enters `safe_stop` and holds position until perception recovers and you press `E` again.
-
-# Notes
-
-- **Branching policy**: All development must be done on new branches.
-**Direct merges into master branch are strictly prohibited without approval**.
-- **Code quality**: Pre-commit will enforce code style checks before commits.
-- **Confidentiality**: Internal use only. External distribution or commercial use is forbidden.
-
 
 
 # Troubleshooting
